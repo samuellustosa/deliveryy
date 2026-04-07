@@ -1,0 +1,90 @@
+// api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js" // Alterado de prisma-client-node para o padrão atual
+}
+
+datasource db {
+  provider = "postgresql" 
+  // A linha 'url' foi removida daqui e deve ir para o prisma.config.ts
+}
+
+// 1. A Loja (O Tenant)
+model Store {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  niche       String   @default("gastronomia")
+  phone       String   
+  
+  address     String?
+  deliveryFee Float    @default(0)
+
+  categories  Category[]
+  products    Product[]
+  orders      Order[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 2. Categorias
+model Category {
+  id      String @id @default(uuid())
+  name    String
+  order   Int    @default(0)
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  products Product[]
+
+  @@index([storeId])
+}
+
+// 3. Produtos
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([categoryId])
+}
+
+// 4. Pedidos
+model Order {
+  id            String      @id @default(uuid())
+  customerName  String
+  customerPhone String
+  address       String
+  total         Float
+  status        OrderStatus @default(PENDING)
+  
+  storeId       String
+  store         Store       @relation(fields: [storeId], references: [id])
+
+  createdAt     DateTime    @default(now())
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
