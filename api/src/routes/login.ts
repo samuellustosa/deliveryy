@@ -1,22 +1,34 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import { prisma } from '../lib/prisma.js' // Importando o prisma
 
 export async function login(app: FastifyInstance) {
   app.post('/login', async (request, reply) => {
     const loginSchema = z.object({
-      email: z.string().email(),
-      password: z.string()
+      email: z.string().email("E-mail inválido"),
+      password: z.string().min(1, "Senha é obrigatória")
     })
 
     const { email, password } = loginSchema.parse(request.body)
 
-    // Por enquanto, vamos validar com dados do .env para ser rápido
-    // No futuro, você buscará isso na tabela 'User' do banco
-    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-      const token = app.jwt.sign({ email })
-      return { token }
+    // 1. Busca o usuário no banco (ajustado para o campo 'phone' onde salvamos o email)
+    const store = await prisma.store.findFirst({
+      where: {
+        phone: email 
+      }
+    })
+
+    // 2. Valida se a loja existe e se a senha bate
+    if (!store || store.password !== password) {
+      return reply.status(401).send({ message: 'E-mail ou senha incorretos' })
     }
 
-    return reply.status(401).send({ message: 'Credenciais inválidas' })
+    // 3. Gera o token JWT usando o ID da loja para o dashboard saber quem é quem
+    const token = app.jwt.sign({ 
+      sub: store.id,
+      email: store.phone 
+    })
+
+    return { token }
   })
 }

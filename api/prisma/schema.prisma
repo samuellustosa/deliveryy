@@ -1,7 +1,7 @@
 // api/prisma/schema.prisma
 
 generator client {
-  provider = "prisma-client-js" // Alterado de prisma-client-node para o padrão atual
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -17,7 +17,8 @@ model Store {
   description String?
   logoUrl     String?
   niche       String   @default("gastronomia")
-  phone       String   
+  phone       String   @unique // Adicionado @unique para permitir busca única no login
+  password    String   // ADICIONADO: Campo para autenticação
   
   address     String?
   deliveryFee Float    @default(0)

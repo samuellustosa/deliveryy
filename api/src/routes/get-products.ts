@@ -1,23 +1,26 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 
-export async function getOrders(app: FastifyInstance) {
-  app.get('/orders', { 
+export async function getProducts(app: FastifyInstance) {
+  app.get('/products', { 
     onRequest: [async (request) => await request.jwtVerify()] 
   }, async (request, reply) => {
     
-    // Fazendo o cast para o TS entender que o 'sub' existe e é uma string
+    // Pega o ID da loja do token de quem logou
     const { sub: storeId } = request.user as { sub: string }
 
-    const orders = await prisma.order.findMany({
+    const products = await prisma.product.findMany({
       where: { 
         storeId: storeId 
+      },
+      include: {
+        category: true // Traz os dados da categoria junto
       },
       orderBy: { 
         createdAt: 'desc' 
       }
     })
 
-    return orders
+    return products
   })
 }

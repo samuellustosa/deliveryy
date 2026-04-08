@@ -4,44 +4,39 @@ import { prisma } from '../lib/prisma.js'
 
 export async function signup(app: FastifyInstance) {
   app.post('/signup', async (request, reply) => {
+    // 1. Validação dos dados que vêm do Frontend
+    const signupSchema = z.object({
+      email: z.string().email(),
+      password: z.string().min(6)
+    })
+
+    const { email, password } = signupSchema.parse(request.body)
+
     try {
-      const signupSchema = z.object({
-        email: z.string().email("E-mail inválido"),
-        password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-      })
-
-      const { email, password } = signupSchema.parse(request.body)
-
-      // Verifica se já existe um ADM ou loja com esse e-mail (usando o campo phone como exemplo)
-      const userExists = await prisma.store.findFirst({
+      // 2. Verifica se já existe uma loja com esse "email" (campo phone)
+      const userExists = await prisma.store.findUnique({
         where: { phone: email }
       })
 
       if (userExists) {
-        return reply.status(400).send({ message: "Este e-mail já está cadastrado." })
+        return reply.status(400).send({ message: 'Este e-mail já está em uso.' })
       }
 
-      // Criação inicial (ajuste conforme seu modelo de User no futuro)
-      // Por enquanto, criaremos uma loja vinculada a este e-mail
-      await prisma.store.create({
+      // 3. Cria a nova loja no banco Neon
+      const store = await prisma.store.create({
         data: {
-          name: "Minha Nova Loja",
-          slug: `loja-${Date.now()}`,
-          phone: email, // Armazenando e-mail no campo phone para teste rápido
-          niche: "gastronomia"
+          name: "Minha Loja", // Nome padrão inicial
+          slug: `loja-${Date.now()}`, // Gera um slug único temporário
+          phone: email, // Salvando e-mail no campo phone para o login
+          password: password, // Salvando a senha (que o TS agora reconhece)
+          niche: "gastronomia",
         }
       })
 
-      return reply.status(201).send({ message: "Cadastro realizado com sucesso!" })
-
+      return reply.status(201).send({ storeId: store.id })
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({ 
-          message: "Erro de validação", 
-          errors: error.flatten().fieldErrors 
-        })
-      }
-      return reply.status(500).send({ message: "Erro interno no servidor." })
+      console.error(error)
+      return reply.status(500).send({ message: 'Erro ao criar conta no banco de dados.' })
     }
   })
 }

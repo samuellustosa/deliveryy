@@ -3,20 +3,26 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 
 export async function createProduct(app: FastifyInstance) {
-  app.post('/products', async (request, reply) => {
+  app.post('/products', {
+    // 1. Só permite criar produto se o lojista estiver logado
+    onRequest: [async (request) => await request.jwtVerify()]
+  }, async (request, reply) => {
     try {
-      // 1. Validação com Zod
+      // 2. Extrai o ID da loja direto do token JWT
+      const { sub: storeId } = request.user as { sub: string }
+
+      // 3. Validação: removi o storeId do body, pois agora ele vem do token
       const createProductSchema = z.object({
         name: z.string().min(1, "O nome do produto é obrigatório"),
         description: z.string().optional(),
         price: z.number().positive("O preço deve ser maior que zero"),
         categoryId: z.string().uuid("ID da categoria inválido"),
-        storeId: z.string().uuid("ID da loja inválido"),
+        imageUrl: z.string().optional() // Caso queira salvar a URL da imagem
       })
 
-      const { name, description, price, categoryId, storeId } = createProductSchema.parse(request.body)
+      const { name, description, price, categoryId, imageUrl } = createProductSchema.parse(request.body)
 
-      // 2. Verificação de Segurança: A categoria pertence a essa loja?
+      // 4. Verificação de Segurança: A categoria realmente existe e pertence a ESTA loja?
       const category = await prisma.category.findFirst({
         where: {
           id: categoryId,
@@ -30,14 +36,15 @@ export async function createProduct(app: FastifyInstance) {
         })
       }
 
-      // 3. Criação do Produto
+      // 5. Criação do Produto no banco Neon
       const product = await prisma.product.create({
         data: {
           name,
-          description: description ?? null, // Converte undefined para null (o Prisma aceita null para campos opcionais)
+          description: description ?? null,
           price,
           categoryId,
           storeId,
+          imageUrl: imageUrl ?? null
         }
       })
 

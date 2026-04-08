@@ -140,7 +140,7 @@ export default function AdminPanel() {
       
       <div className="mt-12 p-4 bg-primary/5 rounded-xl border border-primary/10 flex items-center gap-3 justify-center text-sm text-primary/80">
         <AlertCircle className="h-4 w-4" />
-        Painel Administrativo • CPD Grupo Mateus
+        Painel Administrativo
       </div>
     </div>
   );

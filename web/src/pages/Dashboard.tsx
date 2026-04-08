@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LayoutDashboard, ShoppingBag, DollarSign, Utensils } from "lucide-react";
+import { 
+  Loader2, ShoppingBag, DollarSign, Utensils, PlusCircle 
+} from "lucide-react";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface DashboardStats {
   totalOrders: number;
@@ -24,8 +28,7 @@ export default function Dashboard() {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        
-        // Buscamos pedidos e produtos em paralelo para ganhar performance
+        // Chamadas ao seu backend Node.js
         const [ordersResponse, productsResponse] = await Promise.all([
           api.get("/orders"),
           api.get("/products")
@@ -33,8 +36,8 @@ export default function Dashboard() {
 
         const orders = ordersResponse.data;
         const products = productsResponse.data;
-
-        // Calculamos o faturamento total somando o campo 'total' de cada pedido
+        
+        // Faturamento calculado dinamicamente
         const totalRevenue = orders.reduce((acc: number, order: any) => acc + (order.total || 0), 0);
 
         setStats({
@@ -46,41 +49,36 @@ export default function Dashboard() {
         toast({
           variant: "destructive",
           title: "Erro ao atualizar painel",
-          description: "Não conseguimos carregar os dados em tempo real."
+          description: "Não conseguimos carregar os dados do servidor."
         });
       } finally {
         setLoading(false);
       }
     }
-
     loadDashboardData();
   }, [toast]);
 
   if (loading) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium">Sincronizando dados...</p>
+        <p className="text-muted-foreground animate-pulse font-medium">Sincronizando com o banco Neon...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="space-y-8">
+      {/* Cabeçalho do Dashboard */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <LayoutDashboard className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Painel de Controle</h1>
-            <p className="text-muted-foreground">Visão geral do Samuel's Burger</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Painel de Controle</h1>
+          <p className="text-muted-foreground">Visão geral da sua loja</p>
         </div>
       </div>
 
+      {/* Grid de Estatísticas */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Card de Pedidos */}
         <Card className="border-l-4 border-l-blue-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold uppercase text-muted-foreground">Pedidos Totais</CardTitle>
@@ -92,7 +90,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card de Faturamento */}
         <Card className="border-l-4 border-l-green-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold uppercase text-muted-foreground">Faturamento</CardTitle>
@@ -106,7 +103,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card de Cardápio */}
         <Card className="border-l-4 border-l-orange-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-semibold uppercase text-muted-foreground">Itens no Menu</CardTitle>
@@ -119,8 +115,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Dica de Desenvolvedor */}
-      <div className="mt-10 p-4 rounded-xl border bg-card text-center text-sm shadow-sm flex items-center justify-center gap-2">
+      {/* Status da Conexão */}
+      <div className="p-4 rounded-xl border bg-card text-center text-sm shadow-sm flex items-center justify-center gap-2 max-w-fit mx-auto">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
