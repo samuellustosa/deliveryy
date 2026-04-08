@@ -16,23 +16,14 @@ class ApiClient {
     }
   }
 
-  getToken() {
-    return this.token;
-  }
-
   /**
-   * Métodos genéricos para o AuthContext e outras chamadas manuais
+   * Métodos genéricos para o AuthContext
    */
   public async post<T = any>(path: string, data: any): Promise<{ data: T }> {
     const response = await this.request<T>(path, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return { data: response };
-  }
-
-  public async get<T = any>(path: string): Promise<{ data: T }> {
-    const response = await this.request<T>(path, { method: 'GET' });
     return { data: response };
   }
 
@@ -59,124 +50,38 @@ class ApiClient {
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
-      throw new Error('Sessão expirada. Faça login novamente.');
+      throw new Error('Sessão expirada.');
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
-      // Pega a mensagem de erro do Zod ou a mensagem padrão do servidor
+      const error = await response.json().catch(() => ({ message: 'Erro no servidor' }));
+      // Pega a mensagem do Zod (Bad Request) ou a mensagem de erro comum
       const msg = error.errors ? Object.values(error.errors).flat()[0] : error.message;
       throw new Error(msg || `Erro ${response.status}`);
     }
 
-    if (response.status === 204) return {} as T;
-    return response.json();
+    return response.status === 204 ? ({} as T) : response.json();
   }
 
-  /**
-   * AUTENTICAÇÃO
-   * Aqui fazemos a "mágica": o front recebe email, mas manda 'phone' para o backend
-   */
-  signup(data: { email: string; password: string }) {
-    return this.request<{ token: string }>('/signup', {
-      method: 'POST',
-      body: JSON.stringify({
-        phone: data.email, // Tradução para o campo esperado pelo seu backend
-        password: data.password
-      }),
-    });
-  }
-
+  // --- AUTENTICAÇÃO ---
+  // Agora enviando 'email' para bater com o loginSchema do seu backend
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
       body: JSON.stringify({
-        phone: data.email, // O seu backend no login.ts espera 'phone'
+        email: data.email, 
         password: data.password
       }),
     });
   }
 
-  createStore(data: { name: string; slug: string; phone: string; niche: string; password: string }) {
-    return this.request<{ token: string }>('/stores', {
+  signup(data: { email: string; password: string }) {
+    return this.request<{ token: string }>('/signup', {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  /**
-   * PRODUTOS
-   */
-  getProducts() {
-    return this.request<Product[]>('/products');
-  }
-
-  createProduct(data: Omit<Product, 'id' | 'imageUrl' | 'isActive'>) {
-    return this.request<Product>('/products', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  updateProduct(id: string, data: Partial<Product>) {
-    return this.request<Product>(`/products/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  deleteProduct(id: string) {
-    return this.request<void>(`/products/${id}`, { method: 'DELETE' });
-  }
-
-  toggleProductStatus(id: string, isActive: boolean) {
-    return this.request<Product>(`/products/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ isActive }),
-    });
-  }
-
-  uploadProductImage(id: string, file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    return this.request<{ imageUrl: string }>(`/products/${id}/image`, {
-      method: 'POST',
-      body: formData,
-    });
-  }
-
-  /**
-   * CATEGORIAS E PEDIDOS
-   */
-  createCategory(data: { name: string }) {
-    return this.request<Category>('/categories', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  getOrders() {
-    return this.request<Order[]>('/orders');
-  }
-
-  updateOrderStatus(orderId: string, status: OrderStatus) {
-    return this.request<Order>(`/orders/${orderId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    });
-  }
-
-  /**
-   * MENU PÚBLICO
-   */
-  getMenu(slug: string) {
-    return this.request<MenuData>(`/menu/${slug}`);
-  }
-
-  createOrder(data: CreateOrderData) {
-    return this.request<Order>('/orders', {
-      method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password
+      }),
     });
   }
 }
