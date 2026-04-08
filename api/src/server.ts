@@ -20,6 +20,9 @@ import { updateOrderStatus } from './routes/update-order-status.js';
 import { login } from './routes/login.js';
 import { signup } from './routes/signup.js';
 import { getProducts } from './routes/get-products.js';
+import { createBanner } from './routes/create-banner.js'
+import { getBanners } from './routes/get-banners.js'
+import { deleteBanner } from './routes/delete-banner.js'
 
 const app = fastify();
 
@@ -67,6 +70,9 @@ app.register(uploadImage);
 app.register(createOrder);
 app.register(getOrders);
 app.register(updateOrderStatus);
+app.register(createBanner);
+app.register(getBanners);
+app.register(deleteBanner);
 
 // 5. Inicialização (Porta 3333 para o Front encontrar)
 app.listen({ 

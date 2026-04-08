@@ -10,11 +10,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Upload, Loader2, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Loader2, ImageIcon, FolderPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Products() {
   const queryClient = useQueryClient();
+
+  // Estados para o formulário de Categoria
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  // Estados para o formulário de Produto
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [form, setForm] = useState({ name: '', description: '', price: '', categoryId: '' });
 
   // Busca de produtos
   const { data: products, isLoading: loadingProducts } = useQuery({ 
@@ -22,19 +31,34 @@ export default function Products() {
     queryFn: () => api.getProducts() 
   });
 
-  // Busca de categorias (ajustado para extrair do retorno das lojas, conforme seu projeto)
-  const { data: categories, isLoading: loadingCategories } = useQuery({ 
+  // Busca de categorias (depende de stores)
+  const { data: categories } = useQuery({ 
     queryKey: ['categories'], 
     queryFn: async () => {
       const stores = await api.getStores();
+      // Retorna as categorias da primeira loja encontrada
       return stores[0]?.categories || [];
     }
   });
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', price: '', categoryId: '' });
+  // Mutation para criar Categoria
+  const createCategoryMutation = useMutation({
+    mutationFn: (name: string) => api.createCategory({ name }),
+    onSuccess: () => {
+      // CRITICAL: Invalida 'categories' e 'stores' para forçar o Select a atualizar
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['stores'] }); 
+      
+      toast.success('Categoria criada com sucesso!');
+      setCategoryDialogOpen(false);
+      setNewCategoryName('');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Erro ao criar categoria');
+    },
+  });
 
+  // Mutation para criar/editar Produto
   const createMutation = useMutation({
     mutationFn: (data: any) => editing ? api.updateProduct(editing.id, data) : api.createProduct(data),
     onSuccess: () => {
@@ -43,8 +67,7 @@ export default function Products() {
       closeDialog();
     },
     onError: (err: any) => {
-      const message = err.response?.data?.message || 'Erro ao processar produto';
-      toast.error(message);
+      toast.error(err.response?.data?.message || 'Erro ao processar produto');
     },
   });
 
@@ -96,11 +119,8 @@ export default function Products() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!form.categoryId) {
-      return toast.error("Selecione uma categoria para o produto.");
-    }
-
+    if (!form.categoryId) return toast.error("Selecione uma categoria.");
+    
     createMutation.mutate({ 
       name: form.name, 
       description: form.description, 
@@ -118,72 +138,113 @@ export default function Products() {
     <div className="space-y-6 animate-slide-up">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Produtos</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Novo produto</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editing ? 'Editar produto' : 'Novo produto'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input 
-                  value={form.name} 
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
-                  required 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select 
-                  value={form.categoryId} 
-                  onValueChange={value => setForm(f => ({ ...f, categoryId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories?.map((cat: any) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea 
-                  value={form.description} 
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Preço (R$)</Label>
-                <Input 
-                  type="number" 
-                  step="0.01" 
-                  value={form.price} 
-                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))} 
-                  required 
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                {createMutation.isPending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  editing ? 'Salvar Alterações' : 'Criar Produto'
-                )}
+        
+        <div className="flex gap-2">
+          {/* DIALOG DE NOVA CATEGORIA */}
+          <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <FolderPlus className="mr-2 h-4 w-4" /> Categoria
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova Categoria</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label>Nome da Categoria</Label>
+                  <Input 
+                    placeholder="Ex: Bebidas, Lanches..." 
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  className="w-full" 
+                  onClick={() => createCategoryMutation.mutate(newCategoryName)}
+                  disabled={createCategoryMutation.isPending || !newCategoryName}
+                >
+                  {createCategoryMutation.isPending ? <Loader2 className="animate-spin" /> : 'Criar Categoria'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* DIALOG DE NOVO PRODUTO */}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Novo produto</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editing ? 'Editar produto' : 'Novo produto'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nome</Label>
+                  <Input 
+                    value={form.name} 
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
+                    required 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Select 
+                    value={form.categoryId} 
+                    onValueChange={value => setForm(f => ({ ...f, categoryId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories && categories.length > 0 ? (
+                        categories.map((cat: any) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Nenhuma categoria criada.
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Textarea 
+                    value={form.description} 
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preço (R$)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    value={form.price} 
+                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))} 
+                    required 
+                  />
+                </div>
+
+                <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    editing ? 'Salvar Alterações' : 'Criar Produto'
+                  )}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {loadingProducts ? (
@@ -214,8 +275,8 @@ export default function Products() {
               </div>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">{product.name}</h3>
+                  <div className="max-w-[70%]">
+                    <h3 className="font-semibold truncate">{product.name}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {product.description}
                     </p>
@@ -227,7 +288,7 @@ export default function Products() {
                 <p className="text-lg font-bold text-primary">
                   R$ {product.price.toFixed(2)}
                 </p>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={product.isActive}

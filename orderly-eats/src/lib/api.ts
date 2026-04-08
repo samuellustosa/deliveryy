@@ -18,17 +18,6 @@ class ApiClient {
     }
   }
 
-  /**
-   * Métodos genéricos e auxiliares
-   */
-  public async post<T = any>(path: string, data: any): Promise<{ data: T }> {
-    const response = await this.request<T>(path, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return { data: response };
-  }
-
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {}),
@@ -42,44 +31,42 @@ class ApiClient {
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers,
+      });
 
-    if (response.status === 401) {
-      this.setToken(null);
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      if (response.status === 401) {
+        this.setToken(null);
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        throw new Error('Sessão expirada.');
       }
-      throw new Error('Sessão expirada.');
-    }
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Erro no servidor' }));
-      const msg = error.errors ? Object.values(error.errors).flat()[0] : error.message;
-      throw new Error(msg || `Erro ${response.status}`);
-    }
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Erro no servidor' }));
+        // Pega a primeira mensagem de erro disponível
+        const msg = error.errors ? Object.values(error.errors).flat()[0] : error.message;
+        throw new Error(msg || `Erro ${response.status}`);
+      }
 
-    return response.status === 204 ? ({} as T) : response.json();
+      return response.status === 204 ? ({} as T) : response.json();
+    } catch (err) {
+      console.error(`Erro na requisição [${path}]:`, err);
+      throw err;
+    }
   }
 
   // --- AUTENTICAÇÃO ---
+  // Se o seu backend usa "phone" como identificador, mantivemos assim.
+  // Certifique-se de que no campo "email" do formulário você está digitando o telefone cadastrado.
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
       body: JSON.stringify({
-        phone: data.email, 
-        password: data.password
-      }),
-    });
-  }
-
-  signup(data: { email: string; password: string }) {
-    return this.request<{ token: string }>('/signup', {
-      method: 'POST',
-      body: JSON.stringify({
-        phone: data.email,
+        phone: data.email, // O valor do input (email/phone) vai para a chave 'phone'
         password: data.password
       }),
     });
@@ -126,9 +113,58 @@ class ApiClient {
     });
   }
 
-  // --- PEDIDOS (ORDERS) ---
+  // --- LOJAS E CATEGORIAS ---
+  async getStores() {
+    return this.request<any[]>('/stores');
+  }
+
+  async createStore(data: any) {
+    return this.request<{ token: string }>('/stores', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createCategory(data: { name: string }) {
+    return this.request<{ categoryId: string; message: string }>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // --- BANNERS ---
+  async getBanners() {
+    return this.request<Banner[]>('/banners');
+  }
+
+  async createBanner(data: { imageUrl: string; link?: string }) {
+    return this.request<Banner>('/banners', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBanner(id: string) {
+    return this.request<void>(`/banners/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // --- MENU PÚBLICO ---
+  async getMenu(slug: string) {
+    return this.request<MenuData>(`/menu/${slug}`);
+  }
+
+  // --- PEDIDOS ---
   async getOrders() {
     return this.request<Order[]>('/orders');
+  }
+
+  async createOrder(data: CreateOrderData) {
+    return this.request<void>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async updateOrderStatus(id: string, status: OrderStatus) {
@@ -136,11 +172,6 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
-  }
-
-  // --- LOJAS E CATEGORIAS ---
-  async getStores() {
-    return this.request<any[]>('/stores');
   }
 }
 
@@ -163,6 +194,14 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
+  products?: Product[];
+}
+
+export interface Banner {
+  id: string;
+  imageUrl: string;
+  link?: string;
+  storeId: string;
 }
 
 export interface OrderItem {
@@ -193,6 +232,7 @@ export interface MenuData {
   };
   products: Product[];
   categories: Category[];
+  banners: Banner[];
 }
 
 export interface CreateOrderData {

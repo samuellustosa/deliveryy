@@ -11,6 +11,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
+import Banners from "./pages/Banners"; // 1. Importe a página de banners
 import PublicMenu from "./pages/PublicMenu";
 import DashboardLayout from "./components/DashboardLayout";
 import NotFound from "./pages/NotFound";
@@ -36,11 +37,17 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/m/:slug" element={<PublicMenu />} />
+              
+              {/* Rota do Dashboard e suas sub-rotas */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
                 <Route path="orders" element={<Orders />} />
+                
+                {/* 2. Adicione a rota de banners aqui dentro */}
+                <Route path="banners" element={<Banners />} />
               </Route>
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </CartProvider>

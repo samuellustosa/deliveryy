@@ -8,29 +8,31 @@ datasource db {
 }
 
 model Store {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
-  slug        String    @unique
+  slug        String   @unique
   description String?
   logoUrl     String?
-  niche       String    @default("gastronomia")
-  phone       String    @unique 
-  password    String    
+  niche       String   @default("gastronomia")
+  phone       String   @unique
+  password    String
   address     String?
-  deliveryFee Float     @default(0)
+  deliveryFee Float    @default(0)
 
-  categories  Category[]
-  products    Product[]
-  orders      Order[]
+  // RELAÇÕES
+  categories Category[]
+  products   Product[]
+  orders     Order[]
+  banners    Banner[] // <--- ADICIONADO: Agora a Store reconhece os seus banners
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Category {
-  id      String @id @default(uuid())
-  name    String
-  order   Int    @default(0)
+  id    String @id @default(uuid())
+  name  String
+  order Int    @default(0)
 
   storeId String
   store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -41,23 +43,23 @@ model Category {
 }
 
 model Product {
-  id          String      @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   description String?
   price       Float
   imageUrl    String?
-  isActive    Boolean     @default(true)
+  isActive    Boolean @default(true)
 
-  categoryId  String
-  category    Category    @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
 
-  storeId     String
-  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  orderItems  OrderItem[] // Relacionamento com itens do pedido
+  orderItems OrderItem[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([storeId])
   @@index([categoryId])
@@ -70,23 +72,36 @@ model Order {
   address       String
   total         Float
   status        OrderStatus @default(PENDING)
-  
-  storeId       String
-  store         Store       @relation(fields: [storeId], references: [id])
 
-  items         OrderItem[] // Lista de produtos no pedido
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
 
-  createdAt     DateTime    @default(now())
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+}
+
+model Banner {
+  id       String  @id @default(uuid())
+  imageUrl String
+  link     String?
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade) // Adicionado Cascade para limpar banners se a loja for deletada
+
+  createdAt DateTime @default(now())
+
+  @@index([storeId]) // Índice para busca rápida no cardápio
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  quantity  Int
-  price     Float   // Preço no momento da compra
-  
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(uuid())
+  quantity Int
+  price    Float
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   productId String
   product   Product @relation(fields: [productId], references: [id])
 }

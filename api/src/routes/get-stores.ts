@@ -4,23 +4,29 @@ import { prisma } from '../lib/prisma.js'
 export async function getStores(app: FastifyInstance) {
   app.get('/stores', async (request, reply) => {
     try {
-      // 1. Busca as lojas selecionando apenas o necessário para a vitrine
+      // 1. Busca as lojas incluindo as categorias relacionadas
       const stores = await prisma.store.findMany({
         select: {
           id: true,
           name: true,
           slug: true,
           niche: true,
-          // logoUrl: true, // Certifique-se que este campo existe no seu Prisma
-          phone: true,   // Útil para exibir o contato na vitrine
+          phone: true,
+          // CRÍTICO: Você precisa incluir as categorias aqui dentro do select
+          categories: {
+            select: {
+              id: true,
+              name: true,
+            }
+          }
         },
         orderBy: {
-          name: 'asc' // Organiza por ordem alfabética
+          name: 'asc'
         }
       })
 
-      // 2. Retorna o array de lojas
-      return { stores }
+      // 2. Retorna o array diretamente (conforme o seu Products.tsx espera)
+      return stores 
 
     } catch (error) {
       console.error(error)
