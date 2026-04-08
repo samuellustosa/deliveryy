@@ -1,20 +1,17 @@
 import axios from 'axios';
 
-// URL do teu servidor Fastify
+// Busca a URL do .env ou usa localhost como padrão
 const api = axios.create({
-  baseURL: 'http://localhost:3333' 
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3333',
 });
 
-export const apiService = {
-  // Busca o menu real do banco de dados pelo slug (ex: samuel-burger)
-  getMenu: async (slug: string) => {
-    const response = await api.get(`/menu/${slug}`);
-    return response.data; // Retorna Loja + Categorias + Produtos
-  },
-
-  // Faz o login usando a rota JWT que criámos no backend
-  login: async (credentials: any) => {
-    const response = await api.post('/login', credentials);
-    return response.data; // Retorna o Token
+// Adiciona o token em todas as chamadas automaticamente
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('delivery_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
+  return config;
+});
+
+export { api };
