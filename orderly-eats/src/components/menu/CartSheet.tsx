@@ -10,13 +10,15 @@ import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils'; // Assumindo que você tem essa helper para formatar moeda
 
 interface CartSheetProps {
   storeId: string;
 }
 
 export default function CartSheet({ storeId }: CartSheetProps) {
-  const { items, removeItem, updateQuantity, clearCart, total, itemCount } = useCart();
+  // Atualizado para usar subtotal e deliveryFee do contexto
+  const { items, removeItem, updateQuantity, clearCart, subtotal, deliveryFee, total, itemCount } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerName: '', customerPhone: '', address: '' });
@@ -30,9 +32,13 @@ export default function CartSheet({ storeId }: CartSheetProps) {
         customerName: orderForm.customerName,
         customerPhone: orderForm.customerPhone,
         address: orderForm.address,
-        total,
+        total, // Enviando o total completo (produtos + entrega)
         storeId,
-        items: items.map(i => ({ productId: i.product.id, quantity: i.quantity, price: i.product.price })),
+        items: items.map(i => ({ 
+          productId: i.product.id, 
+          quantity: i.quantity, 
+          price: i.product.price 
+        })),
       });
       toast.success('Pedido enviado com sucesso! 🎉');
       clearCart();
@@ -96,11 +102,13 @@ export default function CartSheet({ storeId }: CartSheetProps) {
           <div className="space-y-1">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Subtotal</span>
-              <span>R$ {total.toFixed(2)}</span>
+              <span>R$ {subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Taxa de entrega</span>
-              <span className="text-accent font-medium">Grátis</span>
+              <span className={deliveryFee === 0 ? "text-green-600 font-bold" : "text-accent font-medium"}>
+                {deliveryFee === 0 ? 'Grátis' : `R$ ${deliveryFee.toFixed(2)}`}
+              </span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between text-lg font-bold">

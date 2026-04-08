@@ -47,7 +47,6 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'Erro no servidor' }));
-        // Pega a primeira mensagem de erro disponível
         const msg = error.errors ? Object.values(error.errors).flat()[0] : error.message;
         throw new Error(msg || `Erro ${response.status}`);
       }
@@ -60,13 +59,11 @@ class ApiClient {
   }
 
   // --- AUTENTICAÇÃO ---
-  // Se o seu backend usa "phone" como identificador, mantivemos assim.
-  // Certifique-se de que no campo "email" do formulário você está digitando o telefone cadastrado.
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
       body: JSON.stringify({
-        phone: data.email, // O valor do input (email/phone) vai para a chave 'phone'
+        phone: data.email,
         password: data.password
       }),
     });
@@ -229,6 +226,7 @@ export interface MenuData {
     slug: string;
     phone: string;
     niche: string;
+    deliveryFee: number; // <--- ADICIONADO: Corrige o erro de propriedade inexistente
   };
   products: Product[];
   categories: Category[];

@@ -18,30 +18,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (identifier: string, password: string) => {
     try {
-      // Envia 'phone' para o backend
-      const response = await api.post<{ token: string }>('/login', { 
-        phone: identifier, 
+      // CORREÇÃO: Use o método .login() que você já criou no seu api.ts
+      // Ele já mapeia o identifier para 'phone' internamente
+      const response = await api.login({ 
+        email: identifier, 
         password 
       });
 
-      const { token } = response.data;
+      const { token } = response;
       api.setToken(token); 
       setIsAuthenticated(true);
     } catch (error: any) {
-      // Captura a mensagem de erro vinda do Fastify
-      const message = error.response?.data?.message || 'Erro ao realizar login';
-      throw new Error(message);
+      // O seu api.ts já faz o throw new Error(message), 
+      // então basta repassar a mensagem aqui.
+      throw new Error(error.message || 'Erro ao realizar login');
     }
   }, []);
 
   const signup = useCallback(async (identifier: string, password: string) => {
     try {
-      const response = await api.post<{ token: string }>('/signup', { 
+      // CORREÇÃO: Use o método .createStore() para o cadastro
+      // Se você tiver uma rota específica de signup no api.ts, use ela.
+      const response = await api.createStore({ 
         phone: identifier, 
-        password 
+        password,
+        name: "Minha Loja", // O seu backend exige name e slug no signup
+        slug: identifier.toLowerCase().replace(/\s+/g, '-') 
       });
 
-      const { token } = response.data;
+      const { token } = response;
       api.setToken(token);
       setIsAuthenticated(true);
     } catch (error: any) {
