@@ -1,3 +1,4 @@
+// orderly-eats/src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 
@@ -17,17 +18,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (identifier: string, password: string) => {
     try {
-      // Passamos o tipo <{ token: string }> para o TS saber que o token existe
+      // Envia 'phone' para o backend
       const response = await api.post<{ token: string }>('/login', { 
         phone: identifier, 
         password 
       });
 
       const { token } = response.data;
-      api.setToken(token); // Usa o método da classe para salvar como 'auth_token'
+      api.setToken(token); 
       setIsAuthenticated(true);
     } catch (error: any) {
-      throw new Error(error.message || 'Erro ao realizar login');
+      // Captura a mensagem de erro vinda do Fastify
+      const message = error.response?.data?.message || 'Erro ao realizar login';
+      throw new Error(message);
     }
   }, []);
 

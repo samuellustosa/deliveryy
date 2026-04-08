@@ -1,3 +1,5 @@
+// orderly-eats/src/lib/api.ts
+
 const API_BASE = 'http://localhost:3333';
 
 class ApiClient {
@@ -17,7 +19,7 @@ class ApiClient {
   }
 
   /**
-   * Métodos genéricos para o AuthContext
+   * Métodos genéricos e auxiliares
    */
   public async post<T = any>(path: string, data: any): Promise<{ data: T }> {
     const response = await this.request<T>(path, {
@@ -55,7 +57,6 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Erro no servidor' }));
-      // Pega a mensagem do Zod (Bad Request) ou a mensagem de erro comum
       const msg = error.errors ? Object.values(error.errors).flat()[0] : error.message;
       throw new Error(msg || `Erro ${response.status}`);
     }
@@ -64,12 +65,11 @@ class ApiClient {
   }
 
   // --- AUTENTICAÇÃO ---
-  // Agora enviando 'email' para bater com o loginSchema do seu backend
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
       body: JSON.stringify({
-        email: data.email, 
+        phone: data.email, 
         password: data.password
       }),
     });
@@ -79,10 +79,68 @@ class ApiClient {
     return this.request<{ token: string }>('/signup', {
       method: 'POST',
       body: JSON.stringify({
-        email: data.email,
+        phone: data.email,
         password: data.password
       }),
     });
+  }
+
+  // --- PRODUTOS ---
+  async getProducts() {
+    return this.request<Product[]>('/products');
+  }
+
+  async createProduct(data: Partial<Product>) {
+    return this.request<Product>('/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProduct(id: string, data: Partial<Product>) {
+    return this.request<Product>(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProduct(id: string) {
+    return this.request<void>(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async toggleProductStatus(id: string, isActive: boolean) {
+    return this.request<void>(`/products/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  }
+
+  async uploadProductImage(id: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<void>(`/products/${id}/image`, {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  // --- PEDIDOS (ORDERS) ---
+  async getOrders() {
+    return this.request<Order[]>('/orders');
+  }
+
+  async updateOrderStatus(id: string, status: OrderStatus) {
+    return this.request<void>(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  // --- LOJAS E CATEGORIAS ---
+  async getStores() {
+    return this.request<any[]>('/stores');
   }
 }
 
@@ -98,7 +156,7 @@ export interface Product {
   description: string;
   price: number;
   categoryId?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   isActive: boolean;
 }
 

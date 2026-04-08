@@ -9,12 +9,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Pencil, Trash2, Upload, Loader2, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Products() {
   const queryClient = useQueryClient();
-  const { data: products, isLoading } = useQuery({ queryKey: ['products'], queryFn: () => api.getProducts() });
+
+  // Busca de produtos
+  const { data: products, isLoading: loadingProducts } = useQuery({ 
+    queryKey: ['products'], 
+    queryFn: () => api.getProducts() 
+  });
+
+  // Busca de categorias (ajustado para extrair do retorno das lojas, conforme seu projeto)
+  const { data: categories, isLoading: loadingCategories } = useQuery({ 
+    queryKey: ['categories'], 
+    queryFn: async () => {
+      const stores = await api.getStores();
+      return stores[0]?.categories || [];
+    }
+  });
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', description: '', price: '', categoryId: '' });
@@ -26,7 +42,10 @@ export default function Products() {
       toast.success(editing ? 'Produto atualizado!' : 'Produto criado!');
       closeDialog();
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      const message = err.response?.data?.message || 'Erro ao processar produto';
+      toast.error(message);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -61,7 +80,12 @@ export default function Products() {
 
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, description: p.description, price: String(p.price), categoryId: p.categoryId || '' });
+    setForm({ 
+      name: p.name, 
+      description: p.description || '', 
+      price: String(p.price), 
+      categoryId: p.categoryId || '' 
+    });
     setDialogOpen(true);
   };
 
@@ -72,7 +96,17 @@ export default function Products() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({ name: form.name, description: form.description, price: Number(form.price), categoryId: form.categoryId || undefined });
+
+    if (!form.categoryId) {
+      return toast.error("Selecione uma categoria para o produto.");
+    }
+
+    createMutation.mutate({ 
+      name: form.name, 
+      description: form.description, 
+      price: Number(form.price), 
+      categoryId: form.categoryId 
+    });
   };
 
   const handleImageUpload = (productId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,26 +129,67 @@ export default function Products() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Nome</Label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                <Input 
+                  value={form.name} 
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
+                  required 
+                />
               </div>
+
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select 
+                  value={form.categoryId} 
+                  onValueChange={value => setForm(f => ({ ...f, categoryId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories?.map((cat: any) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label>Descrição</Label>
-                <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                <Textarea 
+                  value={form.description} 
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
+                />
               </div>
+
               <div className="space-y-2">
                 <Label>Preço (R$)</Label>
-                <Input type="number" step="0.01" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} required />
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  value={form.price} 
+                  onChange={e => setForm(f => ({ ...f, price: e.target.value }))} 
+                  required 
+                />
               </div>
+
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                {createMutation.isPending ? <Loader2 className="animate-spin" /> : editing ? 'Salvar' : 'Criar'}
+                {createMutation.isPending ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  editing ? 'Salvar Alterações' : 'Criar Produto'
+                )}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      {loadingProducts ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {products?.map(product => (
@@ -126,8 +201,13 @@ export default function Products() {
                   <ImageIcon className="h-10 w-10 text-muted-foreground" />
                 )}
                 <label className="absolute bottom-2 right-2 cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(product.id, e)} />
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-md">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={e => handleImageUpload(product.id, e)} 
+                  />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-md hover:bg-accent transition-colors">
                     <Upload className="h-4 w-4 text-foreground" />
                   </div>
                 </label>
@@ -136,26 +216,40 @@ export default function Products() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {product.description}
+                    </p>
                   </div>
                   <Badge variant={product.isActive ? 'default' : 'secondary'}>
                     {product.isActive ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
-                <p className="text-lg font-bold text-primary">R$ {product.price.toFixed(2)}</p>
+                <p className="text-lg font-bold text-primary">
+                  R$ {product.price.toFixed(2)}
+                </p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={product.isActive}
                       onCheckedChange={isActive => toggleMutation.mutate({ id: product.id, isActive })}
                     />
-                    <span className="text-xs text-muted-foreground">{product.isActive ? 'Ativo' : 'Inativo'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {product.isActive ? 'Visível' : 'Oculto'}
+                    </span>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(product)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(product.id)}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => {
+                        if (confirm("Deseja realmente excluir este produto?")) {
+                          deleteMutation.mutate(product.id);
+                        }
+                      }}
+                    >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
