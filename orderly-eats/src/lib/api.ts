@@ -44,7 +44,6 @@ class ApiClient {
           window.location.href = '/login';
           throw new Error('Sessão expirada.');
         }
-        // Se estiver no login, apenas retorna o erro para ser tratado no formulário
         const error = await response.json();
         throw new Error(error.message || 'Credenciais inválidas');
       }
@@ -64,7 +63,6 @@ class ApiClient {
 
   // --- AUTENTICAÇÃO ---
   
-  // Criar novo usuário (Dono)
   signup(data: { email: string; password: string }) {
     return this.request<{ token: string; message: string }>('/signup', {
       method: 'POST',
@@ -75,7 +73,6 @@ class ApiClient {
     });
   }
 
-  // Login de usuário existente
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
@@ -132,12 +129,16 @@ class ApiClient {
     return this.request<any[]>('/stores');
   }
 
-  // Cria a loja vinculada ao usuário autenticado (não retorna token aqui)
   async createStore(data: any) {
     return this.request<{ storeId: string; message: string }>('/stores', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  // Novo método para buscar categorias da loja logada
+  async getCategories() {
+    return this.request<Category[]>('/categories');
   }
 
   async createCategory(data: { name: string }) {

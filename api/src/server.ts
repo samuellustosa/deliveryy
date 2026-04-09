@@ -4,12 +4,13 @@ import multipart from '@fastify/multipart';
 import jwt from '@fastify/jwt';
 import { ZodError } from 'zod';
 
-// Importações com extensões .js (Necessário para o seu ambiente NodeNext)
+// Importações das rotas
 import { createStore } from './routes/create-store.js';
 import { createProduct } from './routes/create-product.js';
 import { getStores } from './routes/get-stores.js';
 import { getStoreMenu } from './routes/get-store-menu.js';
 import { createCategory } from './routes/create-category.js';
+import { getCategories } from './routes/get-categories.js'; // ADICIONADO
 import { updateProduct } from './routes/update-product.js';
 import { deleteProduct } from './routes/delete-product.js';
 import { patchProductStatus } from './routes/patch-product-status.js';
@@ -20,9 +21,9 @@ import { updateOrderStatus } from './routes/update-order-status.js';
 import { login } from './routes/login.js';
 import { signup } from './routes/signup.js';
 import { getProducts } from './routes/get-products.js';
-import { createBanner } from './routes/create-banner.js'
-import { getBanners } from './routes/get-banners.js'
-import { deleteBanner } from './routes/delete-banner.js'
+import { createBanner } from './routes/create-banner.js';
+import { getBanners } from './routes/get-banners.js';
+import { deleteBanner } from './routes/delete-banner.js';
 
 const app = fastify();
 
@@ -33,7 +34,7 @@ app.register(jwt, {
   secret: process.env.JWT_SECRET || 'delivery-saas-secret-key',
 });
 
-// 2. Decorator de Autenticação (ESSENCIAL PARA O SERVIDOR LIGAR)
+// 2. Decorator de Autenticação
 app.decorate('authenticate', async (request, reply) => {
   try {
     await request.jwtVerify();
@@ -60,6 +61,7 @@ app.register(signup);
 app.register(createStore);
 app.register(getStores);
 app.register(getStoreMenu);
+app.register(getCategories); // REGISTRADO PARA RESOLVER O ERRO 404
 app.register(createCategory);
 app.register(createProduct);
 app.register(updateProduct);
@@ -74,7 +76,7 @@ app.register(createBanner);
 app.register(getBanners);
 app.register(deleteBanner);
 
-// 5. Inicialização (Porta 3333 para o Front encontrar)
+// 5. Inicialização
 app.listen({ 
   port: 3333,
   host: '0.0.0.0' 

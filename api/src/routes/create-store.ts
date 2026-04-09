@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 
 export async function createStore(app: FastifyInstance) {
+  // Usando preHandler com o decorator de autenticação que você definiu no server.ts
   app.post('/stores', { preHandler: [app.authenticate] }, async (request, reply) => {
     try {
       const createStoreSchema = z.object({
@@ -17,8 +18,11 @@ export async function createStore(app: FastifyInstance) {
       })
 
       const { name, slug, phone, niche, password } = createStoreSchema.parse(request.body)
-      const userId = request.user.sub
+      
+      // O 'sub' extraído do token JWT é o ID do usuário (User)
+      const userId = (request.user as { sub: string }).sub
 
+      // Verifica se a loja já existe (slug ou telefone único)
       const storeExists = await prisma.store.findFirst({ 
         where: {
           OR: [{ slug }, { phone }]
@@ -27,10 +31,11 @@ export async function createStore(app: FastifyInstance) {
 
       if (storeExists) {
         return reply.status(400).send({ 
-          message: 'Este link (slug) ou e-mail/telefone já está em uso.' 
+          message: 'Este link (slug) ou telefone já está em uso.' 
         })
       }
 
+      // Cria a loja vinculada ao ID do usuário autenticado
       const store = await prisma.store.create({
         data: { 
           name, 
@@ -38,7 +43,7 @@ export async function createStore(app: FastifyInstance) {
           phone, 
           niche,
           password,
-          userId: userId // Vincula a loja ao usuário autenticado
+          userId: userId // Vínculo essencial para o funcionamento do sistema
         }
       })
 

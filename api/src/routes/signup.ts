@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js'
 
 export async function signup(app: FastifyInstance) {
   app.post('/signup', async (request, reply) => {
+    // 1. Validação dos dados de entrada
     const signupSchema = z.object({
       email: z.string().email(),
       password: z.string().min(6)
@@ -12,24 +13,26 @@ export async function signup(app: FastifyInstance) {
     const { email, password } = signupSchema.parse(request.body)
 
     try {
-      // 1. Verifica se o usuário já existe (usando o campo phone como e-mail)
+      // 2. Verifica se o utilizador já existe usando o NOVO campo email
       const userExists = await prisma.user.findUnique({
-        where: { phone: email }
+        where: { email: email } // Agora aponta para o campo email do schema
       })
 
       if (userExists) {
         return reply.status(400).send({ message: 'Este e-mail já está em uso.' })
       }
 
-      // 2. Cria o USUÁRIO no banco (Dono da loja)
-      const user = await prisma.user.create({
+      // 3. Cria o UTILIZADOR no banco (Dono da loja)
+     const user = await prisma.user.create({
         data: {
-          phone: email,
+          email: email,
           password: password,
+          // Se email.split('@')[0] for undefined, passa null
+          name: email.split('@')[0] ?? null, 
         }
       })
 
-      // 3. Gera o Token JWT para o frontend usar no Onboarding
+      // 4. Gera o Token JWT para o frontend usar no Onboarding da loja
       const token = app.jwt.sign({ sub: user.id })
 
       return reply.status(201).send({ 
@@ -38,8 +41,9 @@ export async function signup(app: FastifyInstance) {
       })
 
     } catch (error) {
-      console.error(error)
-      return reply.status(500).send({ message: 'Erro ao criar conta.' })
+      // Log detalhado para te ajudar a debugar no terminal
+      console.error('ERRO NO PRISMA DURANTE SIGNUP:', error)
+      return reply.status(500).send({ message: 'Erro interno ao criar conta.' })
     }
   })
 }

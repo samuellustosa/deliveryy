@@ -25,36 +25,31 @@ export default function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', description: '', price: '', categoryId: '' });
 
-  // Busca de produtos
+  // 1. Busca de produtos
   const { data: products, isLoading: loadingProducts } = useQuery({ 
     queryKey: ['products'], 
     queryFn: () => api.getProducts() 
   });
 
-  // Busca de categorias (depende de stores)
-  const { data: categories } = useQuery({ 
+  // 2. Busca de categorias (Ajustado para usar a rota direta)
+  const { data: categories, isLoading: loadingCategories } = useQuery({ 
     queryKey: ['categories'], 
-    queryFn: async () => {
-      const stores = await api.getStores();
-      // Retorna as categorias da primeira loja encontrada
-      return stores[0]?.categories || [];
-    }
+    queryFn: () => api.getCategories() 
   });
 
   // Mutation para criar Categoria
   const createCategoryMutation = useMutation({
     mutationFn: (name: string) => api.createCategory({ name }),
     onSuccess: () => {
-      // CRITICAL: Invalida 'categories' e 'stores' para forçar o Select a atualizar
+      // Invalida 'categories' para forçar o Select a atualizar imediatamente
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      queryClient.invalidateQueries({ queryKey: ['stores'] }); 
       
       toast.success('Categoria criada com sucesso!');
       setCategoryDialogOpen(false);
       setNewCategoryName('');
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Erro ao criar categoria');
+      toast.error(err.message || 'Erro ao criar categoria');
     },
   });
 
@@ -67,7 +62,7 @@ export default function Products() {
       closeDialog();
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Erro ao processar produto');
+      toast.error(err.message || 'Erro ao processar produto');
     },
   });
 
@@ -197,7 +192,7 @@ export default function Products() {
                     onValueChange={value => setForm(f => ({ ...f, categoryId: value }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
+                      <SelectValue placeholder={loadingCategories ? "Carregando..." : "Selecione uma categoria"} />
                     </SelectTrigger>
                     <SelectContent>
                       {categories && categories.length > 0 ? (
@@ -208,7 +203,7 @@ export default function Products() {
                         ))
                       ) : (
                         <div className="p-4 text-center text-sm text-muted-foreground">
-                          Nenhuma categoria criada.
+                          Nenhuma categoria encontrada.
                         </div>
                       )}
                     </SelectContent>
