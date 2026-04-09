@@ -37,7 +37,6 @@ class ApiClient {
         headers,
       });
 
-      // Se for 401 e não estivermos na página de login, redireciona
       if (response.status === 401) {
         if (!window.location.pathname.includes('/login')) {
           this.setToken(null);
@@ -66,20 +65,14 @@ class ApiClient {
   signup(data: { email: string; password: string }) {
     return this.request<{ token: string; message: string }>('/signup', {
       method: 'POST',
-      body: JSON.stringify({
-        email: data.email,
-        password: data.password
-      }),
+      body: JSON.stringify(data),
     });
   }
 
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
-      body: JSON.stringify({
-        email: data.email, // CORRIGIDO: Alterado de 'phone' para 'email'
-        password: data.password
-      }),
+      body: JSON.stringify(data),
     });
   }
 
@@ -172,12 +165,8 @@ class ApiClient {
 
   // --- PEDIDOS ---
   async getOrders(date?: string) {
-    // Se a data existir, adiciona como query string (?date=YYYY-MM-DD)
     const query = date ? `?date=${date}` : '';
-    
-    return this.request<Order[]>(`/orders${query}`, {
-      method: 'GET'
-    });
+    return this.request<Order[]>(`/orders${query}`, { method: 'GET' });
   }
 
   async createOrder(data: CreateOrderData) {
@@ -259,7 +248,16 @@ export interface MenuData {
 export interface CreateOrderData {
   customerName: string;
   customerPhone: string;
-  address: string;
+  type: string;        // NOVO: 'DELIVERY', 'PICKUP' ou 'ONSITE'
+  zipCode?: string;    // NOVO
+  street?: string;     // NOVO
+  number?: string;     // NOVO
+  complement?: string; // NOVO
+  reference?: string;  // NOVO
+  city?: string;       // NOVO
+  state?: string;      // NOVO
+  deliveryFee: number; // NOVO
+  address: string;     // Mantido para compatibilidade ou resumo
   total: number;
   storeId: string;
   items: { productId: string; quantity: number; price: number }[];

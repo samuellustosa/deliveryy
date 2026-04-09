@@ -23,7 +23,6 @@ export default function CartSheet({ storeId }: CartSheetProps) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Estado detalhado do formulário
   const [orderForm, setOrderForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -37,7 +36,6 @@ export default function CartSheet({ storeId }: CartSheetProps) {
     state: ''
   });
 
-  // Função para buscar CEP automaticamente
   const handleZipCodeBlur = async () => {
     const cleanCep = orderForm.zipCode.replace(/\D/g, '');
     if (cleanCep.length === 8) {
@@ -51,7 +49,7 @@ export default function CartSheet({ storeId }: CartSheetProps) {
             city: data.localidade,
             state: data.uf
           }));
-          toast.success('Endereço preenchido!');
+          toast.success('Endereço localizado!');
         } else {
           toast.error('CEP não encontrado.');
         }
@@ -74,6 +72,15 @@ export default function CartSheet({ storeId }: CartSheetProps) {
         customerName: orderForm.customerName,
         customerPhone: orderForm.customerPhone.replace(/\D/g, ''), 
         address: fullAddress,
+        type: orderForm.orderType,
+        deliveryFee: orderForm.orderType === 'DELIVERY' ? deliveryFee : 0,
+        zipCode: orderForm.zipCode,
+        street: orderForm.street,
+        number: orderForm.number,
+        complement: orderForm.complement,
+        reference: orderForm.reference,
+        city: orderForm.city,
+        state: orderForm.state,
         total: orderForm.orderType === 'DELIVERY' ? total : subtotal,
         storeId,
         items: items.map(i => ({ 
@@ -177,11 +184,11 @@ export default function CartSheet({ storeId }: CartSheetProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome</Label>
-                  <Input value={orderForm.customerName} onChange={e => setOrderForm(f => ({ ...f, customerName: e.target.value }))} placeholder="Seu nome" className="h-9" />
+                  <Input value={orderForm.customerName} onChange={e => setOrderForm(f => ({ ...f, customerName: e.target.value }))} placeholder="Seu nome" className="h-9 rounded-full" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">WhatsApp</Label>
-                  <Input value={orderForm.customerPhone} onChange={e => setOrderForm(f => ({ ...f, customerPhone: formatPhoneNumber(e.target.value) }))} placeholder="(86) 99999-9999" className="h-9" />
+                  <Input value={orderForm.customerPhone} onChange={e => setOrderForm(f => ({ ...f, customerPhone: formatPhoneNumber(e.target.value) }))} placeholder="(86) 99999-9999" className="h-9 rounded-full" />
                 </div>
               </div>
 
@@ -190,19 +197,19 @@ export default function CartSheet({ storeId }: CartSheetProps) {
                 <RadioGroup defaultValue="DELIVERY" onValueChange={v => setOrderForm(f => ({ ...f, orderType: v }))} className="flex gap-2">
                   <div className="flex-1">
                     <RadioGroupItem value="DELIVERY" id="del" className="peer sr-only" />
-                    <Label htmlFor="del" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent peer-data-[state=checked]:border-primary cursor-pointer text-center">
+                    <Label htmlFor="del" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-2 hover:bg-accent peer-data-[state=checked]:border-primary cursor-pointer text-center">
                       <Home className="mb-1 h-4 w-4" /> <span className="text-[10px]">Entrega</span>
                     </Label>
                   </div>
                   <div className="flex-1">
                     <RadioGroupItem value="PICKUP" id="pick" className="peer sr-only" />
-                    <Label htmlFor="pick" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent peer-data-[state=checked]:border-primary cursor-pointer text-center">
+                    <Label htmlFor="pick" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-2 hover:bg-accent peer-data-[state=checked]:border-primary cursor-pointer text-center">
                       <Store className="mb-1 h-4 w-4" /> <span className="text-[10px]">Retirada</span>
                     </Label>
                   </div>
                   <div className="flex-1">
                     <RadioGroupItem value="ONSITE" id="on" className="peer sr-only" />
-                    <Label htmlFor="on" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent peer-data-[state=checked]:border-primary cursor-pointer text-center">
+                    <Label htmlFor="on" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-2 hover:bg-accent peer-data-[state=checked]:border-primary cursor-pointer text-center">
                       <Utensils className="mb-1 h-4 w-4" /> <span className="text-[10px]">No Local</span>
                     </Label>
                   </div>
@@ -210,45 +217,44 @@ export default function CartSheet({ storeId }: CartSheetProps) {
               </div>
 
               {orderForm.orderType === 'DELIVERY' && (
-                <div className="space-y-3 p-3 bg-muted/30 rounded-xl">
+                <div className="space-y-3 p-3 bg-muted/30 rounded-xl animate-in fade-in duration-300">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold">CEP</Label>
-                      <Input value={orderForm.zipCode} onBlur={handleZipCodeBlur} onChange={e => setOrderForm(f => ({ ...f, zipCode: e.target.value }))} placeholder="00000-000" className="h-8 text-xs" />
+                      <Input value={orderForm.zipCode} onBlur={handleZipCodeBlur} onChange={e => setOrderForm(f => ({ ...f, zipCode: e.target.value }))} placeholder="00000-000" className="h-8 text-xs rounded-lg" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold">Nº</Label>
-                      <Input value={orderForm.number} onChange={e => setOrderForm(f => ({ ...f, number: e.target.value }))} placeholder="123" className="h-8 text-xs" />
+                      <Input value={orderForm.number} onChange={e => setOrderForm(f => ({ ...f, number: e.target.value }))} placeholder="123" className="h-8 text-xs rounded-lg" />
                     </div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase font-bold">Rua</Label>
-                    <Input value={orderForm.street} readOnly className="h-8 text-xs bg-muted" />
+                    <Input value={orderForm.street} readOnly className="h-8 text-xs bg-muted rounded-lg" />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold">Complemento</Label>
-                      <Input value={orderForm.complement} onChange={e => setOrderForm(f => ({ ...f, complement: e.target.value }))} placeholder="Ap 01" className="h-8 text-xs" />
+                      <Input value={orderForm.complement} onChange={e => setOrderForm(f => ({ ...f, complement: e.target.value }))} placeholder="Ex: Casa A" className="h-8 text-xs rounded-lg" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold">Cidade</Label>
-                      <Input value={orderForm.city} readOnly className="h-8 text-xs bg-muted" />
+                      <Input value={orderForm.city} readOnly className="h-8 text-xs bg-muted rounded-lg" />
                     </div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase font-bold">Ponto de Referência</Label>
-                    <Input value={orderForm.reference} onChange={e => setOrderForm(f => ({ ...f, reference: e.target.value }))} placeholder="Perto de..." className="h-8 text-xs" />
+                    <Input value={orderForm.reference} onChange={e => setOrderForm(f => ({ ...f, reference: e.target.value }))} placeholder="Perto do posto..." className="h-8 text-xs rounded-lg" />
                   </div>
                 </div>
               )}
 
               <Button
-                className="w-full rounded-full"
-                size="lg"
+                className="w-full rounded-full h-12 text-md"
                 onClick={handleCheckout}
                 disabled={submitting || !orderForm.customerName || !orderForm.customerPhone || (orderForm.orderType === 'DELIVERY' && !orderForm.number)}
               >
-                {submitting ? <Loader2 className="animate-spin" /> : <><Send className="mr-2 h-4 w-4" /> Enviar para WhatsApp</>}
+                {submitting ? <Loader2 className="animate-spin" /> : <><Send className="mr-2 h-4 w-4" /> Finalizar Pedido</>}
               </Button>
             </div>
           )}
