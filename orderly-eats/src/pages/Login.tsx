@@ -9,7 +9,7 @@ import { UtensilsCrossed, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const [identifier, setIdentifier] = useState(''); // Alterado de email para identifier
+  const [identifier, setIdentifier] = useState(''); 
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -20,14 +20,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // O segredo está aqui: passamos o 'identifier' que o backend espera como 'phone'
+      // Enviamos o identifier (que pode ser e-mail ou telefone) para a função de login
       await login(identifier, password);
       
       toast.success('Login realizado com sucesso!');
       navigate('/dashboard');
     } catch (err: any) {
-      // Melhorei a captura de erro para mostrar a mensagem vinda do seu Fastify
-      const message = err.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.';
+      // Captura a mensagem de erro vinda da API (ex: "Credenciais inválidas")
+      const message = err.message || 'Erro ao fazer login. Verifique as suas credenciais.';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -41,8 +41,8 @@ export default function Login() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
             <UtensilsCrossed className="h-7 w-7 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Entrar no painel</CardTitle>
-          <CardDescription>Acesse sua conta para gerenciar sua loja</CardDescription>
+          <CardTitle className="text-2xl font-bold">Entrar no painel</CardTitle>
+          <CardDescription>Aceda à sua conta para gerir a sua loja</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -50,15 +50,15 @@ export default function Login() {
               <Label htmlFor="identifier">E-mail ou Telefone</Label>
               <Input 
                 id="identifier" 
-                type="text" // Mudado para text para aceitar o que estiver no campo 'phone' do banco
-                placeholder="seu@email.com ou telefone" 
+                type="text" 
+                placeholder="exemplo@email.com ou 86999999999" 
                 value={identifier} 
                 onChange={e => setIdentifier(e.target.value)} 
                 required 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password">Palavra-passe</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -72,7 +72,7 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Autenticando...
+                  A autenticar...
                 </>
               ) : (
                 'Entrar'

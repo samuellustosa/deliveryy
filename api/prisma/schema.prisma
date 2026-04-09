@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ADICIONADO: Modelo de usuário para o dono da loja
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+
+  // Relação inversa: Um usuário pode ter várias lojas
+  stores    Store[]
+}
+
 model Store {
   id          String   @id @default(uuid())
   name        String
@@ -19,48 +31,43 @@ model Store {
   address     String?
   deliveryFee Float    @default(0)
 
-  // RELAÇÕES
+  // VÍNCULO COM O DONO (Corrigido para usar a relação com User)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
   categories Category[]
   products   Product[]
   orders     Order[]
-  banners    Banner[] // <--- ADICIONADO: Agora a Store reconhece os seus banners
+  banners    Banner[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Category {
-  id    String @id @default(uuid())
-  name  String
-  order Int    @default(0)
-
+  id      String @id @default(uuid())
+  name    String
+  order   Int    @default(0)
   storeId String
   store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
   products Product[]
-
   @@index([storeId])
 }
 
 model Product {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   price       Float
   imageUrl    String?
-  isActive    Boolean @default(true)
-
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  orderItems OrderItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  isActive    Boolean  @default(true)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   @@index([storeId])
   @@index([categoryId])
 }
@@ -72,36 +79,28 @@ model Order {
   address       String
   total         Float
   status        OrderStatus @default(PENDING)
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id])
-
-  items OrderItem[]
-
-  createdAt DateTime @default(now())
+  storeId       String
+  store         Store       @relation(fields: [storeId], references: [id])
+  items         OrderItem[]
+  createdAt     DateTime    @default(now())
 }
 
 model Banner {
   id       String  @id @default(uuid())
   imageUrl String
   link     String?
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade) // Adicionado Cascade para limpar banners se a loja for deletada
-
+  storeId  String
+  store    Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-
-  @@index([storeId]) // Índice para busca rápida no cardápio
+  @@index([storeId])
 }
 
 model OrderItem {
-  id       String @id @default(uuid())
-  quantity Int
-  price    Float
-
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
+  id        String @id @default(uuid())
+  quantity  Int
+  price     Float
+  orderId   String
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product @relation(fields: [productId], references: [id])
 }

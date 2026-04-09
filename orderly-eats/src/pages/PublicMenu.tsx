@@ -15,7 +15,6 @@ import CartSheet from '@/components/menu/CartSheet';
 
 export default function PublicMenu() {
   const { slug } = useParams<{ slug: string }>();
-  // Adicionado clearCart para resetar o estado ao trocar de loja
   const { items, addItem, updateQuantity, setDeliveryFee, clearCart } = useCart(); 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -25,21 +24,20 @@ export default function PublicMenu() {
     queryKey: ['menu', slug],
     queryFn: () => api.getMenu(slug!),
     enabled: !!slug,
+    placeholderData: undefined, // Força a limpeza do cache visual ao trocar de slug
+    refetchOnWindowFocus: false,
   });
 
   // --- SINCRONIZAÇÃO E LIMPEZA ---
   useEffect(() => {
-    // SEMPRE limpa o carrinho ao trocar de loja (slug mudou)
-    clearCart(); 
+    // Se o slug mudou, limpamos o estado anterior imediatamente
+    clearCart();
+    setSearch('');
+    setActiveCategory(null);
 
     if (menu?.store?.deliveryFee !== undefined) {
       setDeliveryFee(menu.store.deliveryFee);
     }
-    
-    // Reseta a busca e categoria ao trocar de loja
-    setSearch('');
-    setActiveCategory(null);
-    
   }, [slug, menu?.store?.deliveryFee, setDeliveryFee, clearCart]);
 
   const getItemQuantity = (productId: string) =>
@@ -172,7 +170,6 @@ export default function PublicMenu() {
                       key={product.id}
                       product={product}
                       quantity={getItemQuantity(product.id)}
-                      // PASSO CORRIGIDO: Agora enviamos o produto e o ID da loja
                       onAdd={() => addItem(product, menu.store.id)} 
                       onUpdateQty={(qty) => updateQuantity(product.id, qty)}
                     />

@@ -1,33 +1,32 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 
+// Certifique-se de que o nome aqui é exatamente 'getStores'
 export async function getStores(app: FastifyInstance) {
-  app.get('/stores', async (request, reply) => {
+  app.get('/stores', { preHandler: [app.authenticate] }, async (request, reply) => {
     try {
-      // 1. Busca as lojas incluindo as categorias relacionadas
+      const userId = request.user.sub 
+
       const stores = await prisma.store.findMany({
+        where: {
+          userId: userId 
+        },
         select: {
           id: true,
           name: true,
           slug: true,
           niche: true,
           phone: true,
-          // CRÍTICO: Você precisa incluir as categorias aqui dentro do select
           categories: {
             select: {
               id: true,
               name: true,
             }
           }
-        },
-        orderBy: {
-          name: 'asc'
         }
       })
 
-      // 2. Retorna o array diretamente (conforme o seu Products.tsx espera)
       return stores 
-
     } catch (error) {
       console.error(error)
       return reply.status(500).send({ message: "Erro ao listar as lojas." })

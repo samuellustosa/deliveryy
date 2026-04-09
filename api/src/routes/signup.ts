@@ -4,7 +4,6 @@ import { prisma } from '../lib/prisma.js'
 
 export async function signup(app: FastifyInstance) {
   app.post('/signup', async (request, reply) => {
-    // 1. Validação dos dados que vêm do Frontend
     const signupSchema = z.object({
       email: z.string().email(),
       password: z.string().min(6)
@@ -13,8 +12,8 @@ export async function signup(app: FastifyInstance) {
     const { email, password } = signupSchema.parse(request.body)
 
     try {
-      // 2. Verifica se já existe uma loja com esse "email" (campo phone)
-      const userExists = await prisma.store.findUnique({
+      // 1. Verifica se o usuário já existe (usando o campo phone como e-mail)
+      const userExists = await prisma.user.findUnique({
         where: { phone: email }
       })
 
@@ -22,21 +21,25 @@ export async function signup(app: FastifyInstance) {
         return reply.status(400).send({ message: 'Este e-mail já está em uso.' })
       }
 
-      // 3. Cria a nova loja no banco Neon
-      const store = await prisma.store.create({
+      // 2. Cria o USUÁRIO no banco (Dono da loja)
+      const user = await prisma.user.create({
         data: {
-          name: "Minha Loja", // Nome padrão inicial
-          slug: `loja-${Date.now()}`, // Gera um slug único temporário
-          phone: email, // Salvando e-mail no campo phone para o login
-          password: password, // Salvando a senha (que o TS agora reconhece)
-          niche: "gastronomia",
+          phone: email,
+          password: password,
         }
       })
 
-      return reply.status(201).send({ storeId: store.id })
+      // 3. Gera o Token JWT para o frontend usar no Onboarding
+      const token = app.jwt.sign({ sub: user.id })
+
+      return reply.status(201).send({ 
+        token,
+        message: "Conta criada com sucesso! Prossiga para criar sua loja." 
+      })
+
     } catch (error) {
       console.error(error)
-      return reply.status(500).send({ message: 'Erro ao criar conta no banco de dados.' })
+      return reply.status(500).send({ message: 'Erro ao criar conta.' })
     }
   })
 }

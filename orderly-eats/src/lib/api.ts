@@ -37,12 +37,16 @@ class ApiClient {
         headers,
       });
 
+      // Se for 401 e não estivermos na página de login, redireciona
       if (response.status === 401) {
-        this.setToken(null);
         if (!window.location.pathname.includes('/login')) {
+          this.setToken(null);
           window.location.href = '/login';
+          throw new Error('Sessão expirada.');
         }
-        throw new Error('Sessão expirada.');
+        // Se estiver no login, apenas retorna o erro para ser tratado no formulário
+        const error = await response.json();
+        throw new Error(error.message || 'Credenciais inválidas');
       }
 
       if (!response.ok) {
@@ -52,13 +56,26 @@ class ApiClient {
       }
 
       return response.status === 204 ? ({} as T) : response.json();
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Erro na requisição [${path}]:`, err);
       throw err;
     }
   }
 
   // --- AUTENTICAÇÃO ---
+  
+  // Criar novo usuário (Dono)
+  signup(data: { email: string; password: string }) {
+    return this.request<{ token: string; message: string }>('/signup', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password
+      }),
+    });
+  }
+
+  // Login de usuário existente
   login(data: { email: string; password: string }) {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
@@ -115,8 +132,9 @@ class ApiClient {
     return this.request<any[]>('/stores');
   }
 
+  // Cria a loja vinculada ao usuário autenticado (não retorna token aqui)
   async createStore(data: any) {
-    return this.request<{ token: string }>('/stores', {
+    return this.request<{ storeId: string; message: string }>('/stores', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -226,7 +244,7 @@ export interface MenuData {
     slug: string;
     phone: string;
     niche: string;
-    deliveryFee: number; // <--- ADICIONADO: Corrige o erro de propriedade inexistente
+    deliveryFee: number;
   };
   products: Product[];
   categories: Category[];

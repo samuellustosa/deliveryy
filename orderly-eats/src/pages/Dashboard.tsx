@@ -2,15 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, ShoppingBag, DollarSign, TrendingUp, Copy, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Package, ShoppingBag, DollarSign, TrendingUp, Copy, ExternalLink, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom'; // Importante para navegação interna
+import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => api.getProducts() });
   const { data: orders } = useQuery({ queryKey: ['orders'], queryFn: () => api.getOrders() });
   
-  const { data: stores } = useQuery({ queryKey: ['stores'], queryFn: () => api.getStores() });
+  // Adicionamos isLoading para não mostrar a loja errada enquanto carrega
+  const { data: stores, isLoading: isLoadingStore } = useQuery({ 
+    queryKey: ['stores'], 
+    queryFn: () => api.getStores() 
+  });
+  
   const store = stores?.[0];
 
   const stats = [
@@ -22,26 +27,31 @@ export default function Dashboard() {
 
   const handleCopyLink = () => {
     if (!store?.slug) return toast.error("Slug da loja não encontrado");
-    
     const baseUrl = window.location.origin;
     const menuLink = `${baseUrl}/m/${store.slug}`;
-    
     navigator.clipboard.writeText(menuLink);
     toast.success('Link do cardápio copiado com sucesso!');
   };
 
+  // Se estiver carregando a loja, mostra um loader para evitar exibir dados errados
+  if (isLoadingStore) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Visão geral</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Visão geral</h2>
+          {store && <p className="text-sm text-muted-foreground">Loja: {store.name}</p>}
+        </div>
         
         <div className="flex flex-wrap items-center gap-2">
-          {/* BOTÃO DE BANNERS ADICIONADO AQUI */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            asChild
-          >
+          <Button variant="outline" size="sm" asChild>
             <Link to="/banners">
               <ImageIcon className="mr-2 h-4 w-4" />
               Banners
@@ -86,7 +96,6 @@ export default function Dashboard() {
         ))}
       </div>
       
-      {/* Card Informativo do Link */}
       {store && (
         <Card className="bg-muted/50 border-dashed">
           <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">

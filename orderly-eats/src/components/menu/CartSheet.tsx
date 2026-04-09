@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils'; // Assumindo que você tem essa helper para formatar moeda
+//import { formatCurrency } from '@/lib/utils'; // Assumindo que você tem essa helper para formatar moeda
 
 interface CartSheetProps {
   storeId: string;
