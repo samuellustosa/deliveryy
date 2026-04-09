@@ -77,7 +77,7 @@ class ApiClient {
     return this.request<{ token: string }>('/login', {
       method: 'POST',
       body: JSON.stringify({
-        phone: data.email,
+        email: data.email, // CORRIGIDO: Alterado de 'phone' para 'email'
         password: data.password
       }),
     });
@@ -136,7 +136,6 @@ class ApiClient {
     });
   }
 
-  // Novo método para buscar categorias da loja logada
   async getCategories() {
     return this.request<Category[]>('/categories');
   }
@@ -172,8 +171,13 @@ class ApiClient {
   }
 
   // --- PEDIDOS ---
-  async getOrders() {
-    return this.request<Order[]>('/orders');
+  async getOrders(date?: string) {
+    // Se a data existir, adiciona como query string (?date=YYYY-MM-DD)
+    const query = date ? `?date=${date}` : '';
+    
+    return this.request<Order[]>(`/orders${query}`, {
+      method: 'GET'
+    });
   }
 
   async createOrder(data: CreateOrderData) {

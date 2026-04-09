@@ -35,24 +35,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (identifier: string, password: string) => {
-    try {
-      // CORREÇÃO: Use o método .createStore() para o cadastro
-      // Se você tiver uma rota específica de signup no api.ts, use ela.
-      const response = await api.createStore({ 
-        phone: identifier, 
-        password,
-        name: "Minha Loja", // O seu backend exige name e slug no signup
-        slug: identifier.toLowerCase().replace(/\s+/g, '-') 
-      });
+  const signup = useCallback(async (email: string, password: string) => {
+  try {
+    // CORREÇÃO: Chame api.signup para criar o USUÁRIO e receber o TOKEN
+    const response = await api.signup({ 
+      email, 
+      password 
+    });
 
-      const { token } = response;
-      api.setToken(token);
-      setIsAuthenticated(true);
-    } catch (error: any) {
-      throw new Error(error.message || 'Erro ao criar conta');
-    }
-  }, []);
+    // Agora 'response.token' existirá conforme definido no seu api.ts
+    const { token } = response;
+    api.setToken(token);
+    setIsAuthenticated(true);
+  } catch (error: any) {
+    throw new Error(error.message || 'Erro ao criar conta');
+  }
+}, []);
 
   const logout = useCallback(() => {
     api.setToken(null);

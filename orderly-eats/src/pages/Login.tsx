@@ -9,7 +9,8 @@ import { UtensilsCrossed, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const [identifier, setIdentifier] = useState(''); 
+  // Alterado de 'identifier' para 'email' para clareza
+  const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -20,13 +21,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Enviamos o identifier (que pode ser e-mail ou telefone) para a função de login
-      await login(identifier, password);
+      // Agora enviamos apenas o e-mail conforme padronizado no AuthContext e Backend
+      await login(email, password);
       
       toast.success('Login realizado com sucesso!');
       navigate('/dashboard');
     } catch (err: any) {
-      // Captura a mensagem de erro vinda da API (ex: "Credenciais inválidas")
       const message = err.message || 'Erro ao fazer login. Verifique as suas credenciais.';
       toast.error(message);
     } finally {
@@ -42,23 +42,23 @@ export default function Login() {
             <UtensilsCrossed className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">Entrar no painel</CardTitle>
-          <CardDescription>Aceda à sua conta para gerir a sua loja</CardDescription>
+          <CardDescription>Acesse sua conta para gerir sua loja</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">E-mail ou Telefone</Label>
+              <Label htmlFor="email">E-mail</Label>
               <Input 
-                id="identifier" 
-                type="text" 
-                placeholder="exemplo@email.com ou 86999999999" 
-                value={identifier} 
-                onChange={e => setIdentifier(e.target.value)} 
+                id="email" 
+                type="email" // Alterado para 'email' para validação nativa do navegador
+                placeholder="exemplo@email.com" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
                 required 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Palavra-passe</Label>
+              <Label htmlFor="password">Senha</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -72,7 +72,7 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  A autenticar...
+                  Autenticando...
                 </>
               ) : (
                 'Entrar'

@@ -10,14 +10,14 @@ import { Separator } from '@/components/ui/separator';
 import { useCart } from '@/contexts/CartContext';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-//import { formatCurrency } from '@/lib/utils'; // Assumindo que você tem essa helper para formatar moeda
+// Importação dos seus utilitários de formatação
+import { formatCurrency, formatPhoneNumber } from '@/utils/format'; 
 
 interface CartSheetProps {
   storeId: string;
 }
 
 export default function CartSheet({ storeId }: CartSheetProps) {
-  // Atualizado para usar subtotal e deliveryFee do contexto
   const { items, removeItem, updateQuantity, clearCart, subtotal, deliveryFee, total, itemCount } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -30,9 +30,10 @@ export default function CartSheet({ storeId }: CartSheetProps) {
     try {
       await api.createOrder({
         customerName: orderForm.customerName,
-        customerPhone: orderForm.customerPhone,
+        // Envia apenas números para o banco de dados
+        customerPhone: orderForm.customerPhone.replace(/\D/g, ''), 
         address: orderForm.address,
-        total, // Enviando o total completo (produtos + entrega)
+        total, 
         storeId,
         items: items.map(i => ({ 
           productId: i.product.id, 
@@ -40,6 +41,7 @@ export default function CartSheet({ storeId }: CartSheetProps) {
           price: i.product.price 
         })),
       });
+      
       toast.success('Pedido enviado com sucesso! 🎉');
       clearCart();
       setCheckoutOpen(false);
@@ -61,7 +63,7 @@ export default function CartSheet({ storeId }: CartSheetProps) {
           <ShoppingCart className="h-5 w-5" />
           <span className="font-semibold text-sm">Ver carrinho</span>
           <Separator orientation="vertical" className="h-5 bg-primary-foreground/30" />
-          <span className="font-bold text-sm">R$ {total.toFixed(2)}</span>
+          <span className="font-bold text-sm">{formatCurrency(total)}</span>
           <Badge variant="secondary" className="text-xs ml-1">{itemCount}</Badge>
         </button>
       </SheetTrigger>
@@ -77,9 +79,9 @@ export default function CartSheet({ storeId }: CartSheetProps) {
             <div key={item.product.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{item.product.name}</p>
-                <p className="text-xs text-muted-foreground">R$ {item.product.price.toFixed(2)} cada</p>
+                <p className="text-xs text-muted-foreground">{formatCurrency(item.product.price)} cada</p>
                 <p className="text-sm font-bold text-primary mt-0.5">
-                  R$ {(item.product.price * item.quantity).toFixed(2)}
+                  {formatCurrency(item.product.price * item.quantity)}
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -102,18 +104,18 @@ export default function CartSheet({ storeId }: CartSheetProps) {
           <div className="space-y-1">
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Subtotal</span>
-              <span>R$ {subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Taxa de entrega</span>
               <span className={deliveryFee === 0 ? "text-green-600 font-bold" : "text-accent font-medium"}>
-                {deliveryFee === 0 ? 'Grátis' : `R$ ${deliveryFee.toFixed(2)}`}
+                {deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}
               </span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
-              <span className="text-primary">R$ {total.toFixed(2)}</span>
+              <span className="text-primary">{formatCurrency(total)}</span>
             </div>
           </div>
 
@@ -125,15 +127,32 @@ export default function CartSheet({ storeId }: CartSheetProps) {
             <div className="space-y-3 animate-in slide-in-from-bottom-4">
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1 text-xs"><User className="h-3 w-3" /> Nome</Label>
-                <Input value={orderForm.customerName} onChange={e => setOrderForm(f => ({ ...f, customerName: e.target.value }))} placeholder="Seu nome completo" className="rounded-full h-9" />
+                <Input 
+                  value={orderForm.customerName} 
+                  onChange={e => setOrderForm(f => ({ ...f, customerName: e.target.value }))} 
+                  placeholder="Seu nome completo" 
+                  className="rounded-full h-9" 
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" /> WhatsApp</Label>
-                <Input value={orderForm.customerPhone} onChange={e => setOrderForm(f => ({ ...f, customerPhone: e.target.value }))} placeholder="(11) 99999-9999" className="rounded-full h-9" />
+                <Input 
+                  value={orderForm.customerPhone} 
+                  // Aplica a máscara de telefone enquanto o usuário digita
+                  onChange={e => setOrderForm(f => ({ ...f, customerPhone: formatPhoneNumber(e.target.value) }))} 
+                  placeholder="(86) 99999-9999" 
+                  className="rounded-full h-9" 
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1 text-xs"><MapPin className="h-3 w-3" /> Endereço de entrega</Label>
-                <Textarea value={orderForm.address} onChange={e => setOrderForm(f => ({ ...f, address: e.target.value }))} placeholder="Rua, número, bairro, complemento..." className="rounded-xl" rows={2} />
+                <Textarea 
+                  value={orderForm.address} 
+                  onChange={e => setOrderForm(f => ({ ...f, address: e.target.value }))} 
+                  placeholder="Rua, número, bairro, complemento..." 
+                  className="rounded-xl" 
+                  rows={2} 
+                />
               </div>
               <Button
                 className="w-full rounded-full"

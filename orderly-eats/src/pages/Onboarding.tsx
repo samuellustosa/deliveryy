@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { formatPhoneNumber } from '@/utils/format'; // Importação do seu utilitário
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +24,8 @@ export default function Onboarding() {
   const [form, setForm] = useState({ 
     name: '', 
     slug: '', 
-    phone: '', 
+    email: '', 
+    phoneStore: '', 
     niche: '', 
     password: '', 
     confirmPassword: '' 
@@ -32,7 +34,14 @@ export default function Onboarding() {
   const navigate = useNavigate();
 
   const updateForm = (field: string, value: string) => {
+    // Aplica a máscara de telefone em tempo real
+    if (field === 'phoneStore') {
+      setForm(prev => ({ ...prev, [field]: formatPhoneNumber(value) }));
+      return;
+    }
+
     setForm(prev => ({ ...prev, [field]: value }));
+    
     if (field === 'name') {
       const generatedSlug = value
         .toLowerCase()
@@ -52,23 +61,22 @@ export default function Onboarding() {
 
     setLoading(true);
     try {
-      // 1. Criar o Usuário (Dono)
-      // O backend espera { email, password } e salva o email no campo 'phone' do BD
+      // 1. Criar o Usuário (Dono) via E-mail
       const { token } = await api.signup({
-        email: form.phone, 
+        email: form.email, 
         password: form.password,
       });
 
-      // 2. Autentica as próximas requisições
       api.setToken(token);
 
-      // 3. Criar a Loja vinculada ao usuário
+      // 2. Criar a Loja vinculada ao usuário
+      // Removemos a máscara do telefone (.replace(/\D/g, '')) antes de enviar ao BD
       await api.createStore({
         name: form.name,
         slug: form.slug,
-        phone: form.phone,
+        phone: form.phoneStore.replace(/\D/g, ''), 
         niche: form.niche,
-        password: form.password, // Opcional se sua rota de loja não exigir
+        password: form.password,
       });
 
       toast.success('Conta e loja criadas com sucesso!');
@@ -105,6 +113,15 @@ export default function Onboarding() {
         </div>
       </div>
       <div className="space-y-2">
+        <Label htmlFor="phoneStore">Telefone de contato da loja</Label>
+        <Input 
+          id="phoneStore"
+          placeholder="(86) 99999-9999" 
+          value={form.phoneStore} 
+          onChange={e => updateForm('phoneStore', e.target.value)} 
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="niche">O que você vende?</Label>
         <Select value={form.niche} onValueChange={v => updateForm('niche', v)}>
           <SelectTrigger id="niche">
@@ -119,13 +136,13 @@ export default function Onboarding() {
 
     <div key="1" className="space-y-4 animate-in fade-in slide-in-from-right-4">
       <div className="space-y-2">
-        <Label htmlFor="phone">E-mail de acesso</Label>
+        <Label htmlFor="email">E-mail de acesso (Login)</Label>
         <Input 
-          id="phone"
+          id="email"
           type="email"
           placeholder="exemplo@email.com" 
-          value={form.phone} 
-          onChange={e => updateForm('phone', e.target.value)} 
+          value={form.email} 
+          onChange={e => updateForm('email', e.target.value)} 
         />
       </div>
       <div className="space-y-2">
@@ -152,8 +169,8 @@ export default function Onboarding() {
   ];
 
   const canNext = step === 0 
-    ? form.name && form.slug && form.niche 
-    : form.phone && form.password.length >= 6 && form.confirmPassword;
+    ? form.name && form.slug && form.niche && form.phoneStore
+    : form.email && form.password.length >= 6 && form.confirmPassword;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">

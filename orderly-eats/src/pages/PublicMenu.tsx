@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api, type Product } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { Loader2, Store, ShoppingBag } from 'lucide-react';
+// Importação dos seus utilitários de formatação
+import { formatPhoneNumber, formatCurrency } from '@/utils/format'; 
 
 import { Badge } from '@/components/ui/badge';
 import MenuHeader from '@/components/menu/MenuHeader';
@@ -24,13 +26,11 @@ export default function PublicMenu() {
     queryKey: ['menu', slug],
     queryFn: () => api.getMenu(slug!),
     enabled: !!slug,
-    placeholderData: undefined, // Força a limpeza do cache visual ao trocar de slug
+    placeholderData: undefined,
     refetchOnWindowFocus: false,
   });
 
-  // --- SINCRONIZAÇÃO E LIMPEZA ---
   useEffect(() => {
-    // Se o slug mudou, limpamos o estado anterior imediatamente
     clearCart();
     setSearch('');
     setActiveCategory(null);
@@ -127,11 +127,20 @@ export default function PublicMenu() {
         <MenuHeader 
           storeName={menu.store.name} 
           niche={menu.store.niche} 
-          phone={menu.store.phone} 
+          phone={formatPhoneNumber(menu.store.phone)} 
         />
         <div className="relative">
           <PromoBanner banners={menu.banners || []} />
         </div>
+        
+        {/* Exibição da Taxa de Entrega Formatada */}
+        <div className="px-4 py-2 bg-primary/5 flex justify-between items-center border-b border-primary/10">
+           <span className="text-xs font-medium text-primary uppercase tracking-wider">Entrega</span>
+           <span className="text-sm font-bold text-primary">
+             {menu.store.deliveryFee > 0 ? formatCurrency(menu.store.deliveryFee) : 'Grátis'}
+           </span>
+        </div>
+
         <div className="px-4 mt-4">
           <SearchBar value={search} onChange={setSearch} />
         </div>
@@ -169,6 +178,8 @@ export default function PublicMenu() {
                     <ProductCard
                       key={product.id}
                       product={product}
+                      // Note: Certifique-se de que o componente ProductCard 
+                      // também usa formatCurrency para exibir o preço.
                       quantity={getItemQuantity(product.id)}
                       onAdd={() => addItem(product, menu.store.id)} 
                       onUpdateQty={(qty) => updateQuantity(product.id, qty)}
