@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { formatPhoneNumber } from '@/utils/format'; // Importação do seu utilitário
+import { formatPhoneNumber } from '@/utils/format'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Store, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+// LISTA DE NICHOS ATUALIZADA
 const niches = [
   { value: 'restaurante', label: 'Restaurante' },
   { value: 'lanchonete', label: 'Lanchonete' },
   { value: 'pizzaria', label: 'Pizzaria' },
+  { value: 'acaiteria', label: 'Açaíteria' }, // Ativa o tema roxo automaticamente
   { value: 'doceria', label: 'Doceria' },
   { value: 'padaria', label: 'Padaria' },
   { value: 'outro', label: 'Outro' },
@@ -33,24 +35,26 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // FUNÇÃO DE ATUALIZAÇÃO MELHORADA
   const updateForm = (field: string, value: string) => {
-    // Aplica a máscara de telefone em tempo real
     if (field === 'phoneStore') {
       setForm(prev => ({ ...prev, [field]: formatPhoneNumber(value) }));
       return;
     }
 
-    setForm(prev => ({ ...prev, [field]: value }));
-    
     if (field === 'name') {
       const generatedSlug = value
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-      setForm(prev => ({ ...prev, slug: generatedSlug }));
+        .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .replace(/[^a-z0-9]+/g, '-')     // Troca espaços por hífens
+        .replace(/(^-|-$)/g, '');        // Limpa hífens nas extremidades
+      
+      setForm(prev => ({ ...prev, name: value, slug: generatedSlug }));
+      return;
     }
+
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async () => {
@@ -61,7 +65,7 @@ export default function Onboarding() {
 
     setLoading(true);
     try {
-      // 1. Criar o Usuário (Dono) via E-mail
+      // 1. Criar o Usuário (Dono)
       const { token } = await api.signup({
         email: form.email, 
         password: form.password,
@@ -69,8 +73,7 @@ export default function Onboarding() {
 
       api.setToken(token);
 
-      // 2. Criar a Loja vinculada ao usuário
-      // Removemos a máscara do telefone (.replace(/\D/g, '')) antes de enviar ao BD
+      // 2. Criar a Loja vinculada
       await api.createStore({
         name: form.name,
         slug: form.slug,
@@ -174,12 +177,12 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md shadow-lg">
+      <Card className="w-full max-w-md shadow-lg border-none">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-inner">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg">
             <Store className="h-7 w-7 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">Crie sua loja</CardTitle>
+          <CardTitle className="text-2xl font-black uppercase tracking-tighter">Crie sua loja</CardTitle>
           <CardDescription>Passo {step + 1} de {steps.length}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -191,11 +194,11 @@ export default function Onboarding() {
               </Button>
             )}
             {step < steps.length - 1 ? (
-              <Button onClick={() => setStep(s => s + 1)} disabled={!canNext} className="flex-1">
+              <Button onClick={() => setStep(s => s + 1)} disabled={!canNext} className="flex-1 font-bold">
                 Próximo <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={!canNext || loading} className="flex-1">
+              <Button onClick={handleSubmit} disabled={!canNext || loading} className="flex-1 font-bold">
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <><Check className="mr-2 h-4 w-4" /> Finalizar</>}
               </Button>
             )}

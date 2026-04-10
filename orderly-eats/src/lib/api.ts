@@ -58,7 +58,6 @@ class ApiClient {
         throw new Error(msg || `Erro ${response.status}`);
       }
 
-      // 204 No Content retorna objeto vazio para não quebrar o .json()
       return response.status === 204 ? ({} as T) : response.json();
     } catch (err: any) {
       console.error(`Erro na requisição [${path}]:`, err);
@@ -257,9 +256,12 @@ export interface MenuData {
     id: string;
     name: string;
     slug: string;
+    description: string | null;
     phone: string;
     niche: string;
     deliveryFee: number;
+    logoUrl?: string | null;   // NOVO: Foto de perfil reconhecida
+    coverUrl?: string | null;  // NOVO: Banner reconhecido
   };
   products: Product[];
   categories: Category[];

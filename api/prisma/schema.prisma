@@ -14,8 +14,6 @@ model User {
   password  String
   name      String?
   createdAt DateTime @default(now())
-
-  // Relação: Um usuário pode ter várias lojas
   stores    Store[]
 }
 
@@ -24,51 +22,78 @@ model Store {
   name        String
   slug        String   @unique
   description String?
-  logoUrl     String?
-  niche       String   @default("gastronomia")
+  logoUrl     String?  // FOTO DE PERFIL
+  coverUrl    String?  // BANNER GRANDE DO NAV
+  niche       String   @default("gastronomia") // acaiteria, pizzaria, etc
   phone       String   @unique
   password    String
   address     String?
   deliveryFee Float    @default(0)
 
-  // VÍNCULO COM O DONO
   userId      String
   user        User     @relation(fields: [userId], references: [id])
 
-  categories Category[]
-  products   Product[]
-  orders     Order[]
-  banners    Banner[]
+  categories   Category[]
+  products     Product[]
+  orders       Order[]
+  banners      Banner[]
+  optionGroups OptionGroup[] // GRUPOS DE ADICIONAIS
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+model OptionGroup {
+  id          String   @id @default(uuid())
+  name        String   // Ex: "Escolha as Bordas", "Adicionais"
+  minOptions  Int      @default(0)
+  maxOptions  Int      @default(1)
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  
+  products    Product[] 
+  options     Option[]
+
+  @@index([storeId])
+}
+
+model Option {
+  id            String      @id @default(uuid())
+  name          String
+  price         Float       @default(0)
+  optionGroupId String
+  group         OptionGroup @relation(fields: [optionGroupId], references: [id], onDelete: Cascade)
+
+  @@index([optionGroupId])
+}
+
 model Category {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
-  order     Int      @default(0)
+  order     Int       @default(0)
   storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   products  Product[]
 
   @@index([storeId])
 }
 
 model Product {
-  id          String      @id @default(uuid())
-  name        String
-  description String?
-  price       Float
-  imageUrl    String?
-  isActive    Boolean     @default(true)
-  categoryId  String
-  category    Category    @relation(fields: [categoryId], references: [id])
-  storeId     String
-  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String        @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  imageUrl     String?
+  isActive     Boolean       @default(true)
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id])
+  storeId      String
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  optionGroups OptionGroup[] // RELAÇÃO COM ADICIONAIS
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([storeId])
   @@index([categoryId])
@@ -78,7 +103,7 @@ model Order {
   id            String      @id @default(uuid())
   customerName  String
   customerPhone String
-  type          String      // DELIVERY, PICKUP, ONSITE
+  type          String      
   zipCode       String?
   street        String?
   number        String?
@@ -87,7 +112,7 @@ model Order {
   city          String?
   state         String?
   deliveryFee   Float       @default(0)
-  address       String      // <--- ESTE CAMPO PRECISA ESTAR AQUI
+  address       String      
   total         Float
   status        OrderStatus @default(PENDING)
   
