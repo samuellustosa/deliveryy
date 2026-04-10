@@ -1,40 +1,52 @@
-// api/src/routes/create-option-group.ts
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 
 export async function createOptionGroup(app: FastifyInstance) {
-  app.post('/option-groups', async (request, reply) => {
-    const user = await request.jwtVerify() as { sub: string }
-    
+  app.post('/option-groups', {
+    onRequest: [async (request) => await request.jwtVerify()]
+  }, async (request, reply) => {
+    const { sub: idFromToken } = request.user as { sub: string }
+
     const bodySchema = z.object({
       name: z.string(),
       minOptions: z.number().default(0),
       maxOptions: z.number().default(1),
       options: z.array(z.object({
         name: z.string(),
-        price: z.number().default(0)
+        price: z.number()
       }))
     })
 
     const { name, minOptions, maxOptions, options } = bodySchema.parse(request.body)
 
-    // Busca a loja do usuário logado
-    const store = await prisma.store.findFirst({ where: { userId: user.sub } })
-    if (!store) return reply.status(404).send({ message: "Loja não encontrada" })
+    // LÓGICA INTELIGENTE: Procura a loja pelo ID do Token (userId ou id da loja)
+    const store = await prisma.store.findFirst({
+      where: {
+        OR: [
+          { userId: idFromToken },
+          { id: idFromToken }
+        ]
+      }
+    })
 
-    const group = await prisma.optionGroup.create({
+    if (!store) {
+      console.log(`[ERRO CREATE] Nenhuma loja encontrada para o ID: ${idFromToken}`)
+      return reply.status(404).send({ message: "Loja não encontrada" })
+    }
+
+    const optionGroup = await prisma.optionGroup.create({
       data: {
         name,
         minOptions,
         maxOptions,
-        storeId: store.id,
+        storeId: store.id, // Amarra o complemento à loja certa
         options: {
           create: options
         }
       }
     })
 
-    return reply.status(201).send(group)
+    return reply.status(201).send(optionGroup)
   })
 }
