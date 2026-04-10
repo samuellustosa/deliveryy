@@ -6,22 +6,21 @@ export async function deleteProduct(app: FastifyInstance) {
   app.delete('/products/:id', { 
     onRequest: [async (request) => await request.jwtVerify()] 
   }, async (request, reply) => {
-    const paramsSchema = z.object({
-      id: z.string().uuid("ID do produto inválido"),
-    })
-
-    const { id } = paramsSchema.parse(request.params)
-
     try {
-      // 1. Pega o ID da loja logada do token
+      const paramsSchema = z.object({
+        id: z.string().uuid("ID do produto inválido"),
+      })
+
+      const { id } = paramsSchema.parse(request.params)
+
+      // 1. Pega o ID da loja logada direto do token
       const { sub: storeId } = request.user as { sub: string }
 
       // 2. Tenta deletar garantindo que o produto PERTENCE à loja
-      // Usamos deleteMany porque ele permite filtrar por dois campos ao mesmo tempo
       const { count } = await prisma.product.deleteMany({
         where: { 
           id,
-          storeId, // Segurança: só deleta se o produto for desta loja
+          storeId, // Trava de segurança essencial
         },
       })
 
@@ -32,8 +31,16 @@ export async function deleteProduct(app: FastifyInstance) {
       }
 
       return reply.status(204).send()
+      
     } catch (error) {
-      console.error(error)
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ 
+          message: "Dados inválidos", 
+          errors: error.flatten().fieldErrors 
+        })
+      }
+
+      console.error('Erro ao excluir produto:', error)
       return reply.status(500).send({ message: "Erro interno ao excluir o produto." })
     }
   })

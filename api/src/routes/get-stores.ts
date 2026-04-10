@@ -1,15 +1,15 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma.js'
 
-// Certifique-se de que o nome aqui é exatamente 'getStores'
 export async function getStores(app: FastifyInstance) {
   app.get('/stores', { preHandler: [app.authenticate] }, async (request, reply) => {
     try {
-      const userId = request.user.sub 
+      // Agora o 'sub' já é o ID da LOJA conforme configuramos no login.ts
+      const storeId = request.user.sub 
 
       const stores = await prisma.store.findMany({
         where: {
-          userId: userId 
+          id: storeId // Busca diretamente pelo ID da loja que vem no token
         },
         select: {
           id: true,
@@ -26,6 +26,8 @@ export async function getStores(app: FastifyInstance) {
         }
       })
 
+      // Se não encontrar nada, o frontend receberá uma lista vazia []
+      // O Dashboard.tsx pegará stores[0] que será undefined se a lista estiver vazia
       return stores 
     } catch (error) {
       console.error(error)

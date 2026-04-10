@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 
 export async function createStore(app: FastifyInstance) {
-  // Usando preHandler com o decorator de autenticação que você definiu no server.ts
+  // Mantemos o authenticate pois aqui o usuário está se cadastrando como dono
   app.post('/stores', { preHandler: [app.authenticate] }, async (request, reply) => {
     try {
       const createStoreSchema = z.object({
@@ -14,15 +14,16 @@ export async function createStore(app: FastifyInstance) {
           .transform(val => val.replace(/\s+/g, '-')),
         phone: z.string().min(8, "Telefone inválido"),
         niche: z.string().default('gastronomia'),
+        // A senha da loja pode ser a mesma do usuário ou uma específica
         password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres")
       })
 
       const { name, slug, phone, niche, password } = createStoreSchema.parse(request.body)
       
-      // O 'sub' extraído do token JWT é o ID do usuário (User)
+      // Aqui o 'sub' ainda é o ID do Usuário (Samuel), pois a loja está sendo criada agora
       const userId = (request.user as { sub: string }).sub
 
-      // Verifica se a loja já existe (slug ou telefone único)
+      // 1. Verifica se o slug ou telefone já existem para evitar duplicidade
       const storeExists = await prisma.store.findFirst({ 
         where: {
           OR: [{ slug }, { phone }]
@@ -35,7 +36,7 @@ export async function createStore(app: FastifyInstance) {
         })
       }
 
-      // Cria a loja vinculada ao ID do usuário autenticado
+      // 2. Cria a loja vinculada ao ID do usuário
       const store = await prisma.store.create({
         data: { 
           name, 
@@ -43,13 +44,15 @@ export async function createStore(app: FastifyInstance) {
           phone, 
           niche,
           password,
-          userId: userId // Vínculo essencial para o funcionamento do sistema
+          userId: userId 
         }
       })
 
+      // 3. Resposta de sucesso
       return reply.status(201).send({ 
         storeId: store.id,
-        message: "Loja criada com sucesso!"
+        slug: store.slug,
+        message: "Loja criada com sucesso! Agora saia e entre novamente para ativar seu painel."
       })
 
     } catch (error) {

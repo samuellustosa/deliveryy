@@ -7,22 +7,12 @@ export async function getProducts(app: FastifyInstance) {
   }, async (request, reply) => {
     
     try {
-      // 1. O 'sub' do token é o ID do USUÁRIO
-      const { sub: userId } = request.user as { sub: string }
+      // O 'sub' do token já é o ID da LOJA
+      const { sub: storeId } = request.user as { sub: string }
 
-      // 2. Precisamos achar a LOJA desse usuário primeiro
-      const store = await prisma.store.findFirst({
-        where: { userId }
-      })
-
-      if (!store) {
-        return reply.status(404).send({ message: 'Loja não encontrada.' })
-      }
-
-      // 3. Agora buscamos os produtos usando o ID real da LOJA
       const products = await prisma.product.findMany({
         where: { 
-          storeId: store.id 
+          storeId: storeId // Usa o ID direto do token
         },
         include: {
           category: true 

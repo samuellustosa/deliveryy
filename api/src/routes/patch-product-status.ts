@@ -8,22 +8,24 @@ export async function patchProductStatus(app: FastifyInstance) {
   }, async (request, reply) => {
     
     try {
+      // O 'sub' do token agora já é o ID da LOJA (Store ID)
       const { sub: storeId } = request.user as { sub: string }
 
       const paramsSchema = z.object({ 
         id: z.string().uuid("ID do produto inválido") 
       })
       
-      // 3. Validação do corpo - Forma simplificada que o TS aceita
       const bodySchema = z.object({ 
         isActive: z.boolean({
-          message: "O status isActive é obrigatório e deve ser booleano"
+          // Em vez de required_error ou invalid_type_error, use apenas message
+          message: "O status isActive é obrigatório e deve ser um valor booleano (true/false)"
         }) 
       })
 
       const { id } = paramsSchema.parse(request.params)
       const { isActive } = bodySchema.parse(request.body)
 
+      // Atualiza garantindo que o produto pertence à loja do lojista logado
       const { count } = await prisma.product.updateMany({
         where: { 
           id,
@@ -34,7 +36,7 @@ export async function patchProductStatus(app: FastifyInstance) {
 
       if (count === 0) {
         return reply.status(404).send({ 
-          message: "Produto não encontrado ou sem permissão." 
+          message: "Produto não encontrado ou você não tem permissão para editá-lo." 
         })
       }
 
@@ -48,7 +50,7 @@ export async function patchProductStatus(app: FastifyInstance) {
         })
       }
 
-      console.error(error)
+      console.error('Erro ao atualizar status do produto:', error)
       return reply.status(500).send({ message: "Erro interno ao atualizar status." })
     }
   })

@@ -8,28 +8,33 @@ export async function updateProduct(app: FastifyInstance) {
   }, async (request, reply) => {
     
     try {
-      // 1. Pega o ID da loja logada direto do Token JWT
+      // 1. O 'sub' do token agora já é o ID da LOJA
       const { sub: storeId } = request.user as { sub: string }
 
       const paramsSchema = z.object({ 
         id: z.string().uuid("ID inválido") 
       })
 
-      // 2. Schema com mensagens simples para evitar erro de tipagem no TS
+      // 2. Schema ajustado para aceitar campos opcionais corretamente
       const bodySchema = z.object({
-        name: z.string().min(1, { message: "Nome inválido" }).optional(),
-        description: z.string().optional(),
-        price: z.number().positive({ message: "Preço deve ser positivo" }).optional(),
-        categoryId: z.string().uuid().optional(),
+        name: z.string().min(1, "O nome não pode ser vazio").optional(),
+        description: z.string().optional().nullable(),
+        price: z.number().positive("O preço deve ser maior que zero").optional(),
+        categoryId: z.string().uuid("Categoria inválida").optional(),
+        imageUrl: z.string().url("URL da imagem inválida").optional().nullable()
       })
 
       const { id } = paramsSchema.parse(request.params)
       const body = bodySchema.parse(request.body)
 
-      // 3. Filtra apenas os campos enviados
-      const updateData = Object.fromEntries(
-        Object.entries(body).filter(([_, value]) => value !== undefined)
-      )
+      // 3. Monta o objeto de atualização apenas com campos definidos
+      // Usamos 'null' explicitamente para campos que o Prisma permite limpar
+      const updateData: any = {}
+      if (body.name !== undefined) updateData.name = body.name
+      if (body.description !== undefined) updateData.description = body.description ?? null
+      if (body.price !== undefined) updateData.price = body.price
+      if (body.categoryId !== undefined) updateData.categoryId = body.categoryId
+      if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl ?? null
 
       if (Object.keys(updateData).length === 0) {
         return reply.status(400).send({ message: "Nenhum dado fornecido para atualização." })
@@ -39,14 +44,14 @@ export async function updateProduct(app: FastifyInstance) {
       const { count } = await prisma.product.updateMany({
         where: { 
           id,
-          storeId // Só edita se o produto for do dono logado
+          storeId 
         },
         data: updateData
       })
 
       if (count === 0) {
         return reply.status(404).send({ 
-          message: "Produto não encontrado ou sem permissão para editar." 
+          message: "Produto não encontrado ou você não tem permissão para editá-lo." 
         })
       }
 
@@ -60,7 +65,7 @@ export async function updateProduct(app: FastifyInstance) {
         })
       }
 
-      console.error(error)
+      console.error('Erro ao editar produto:', error)
       return reply.status(500).send({ message: "Erro interno ao atualizar produto." })
     }
   })

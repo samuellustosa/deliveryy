@@ -87,10 +87,10 @@ model Order {
   city          String?
   state         String?
   deliveryFee   Float       @default(0)
+  address       String      // <--- ESTE CAMPO PRECISA ESTAR AQUI
   total         Float
   status        OrderStatus @default(PENDING)
   
-  // Vínculo essencial com a Loja
   storeId       String
   store         Store       @relation(fields: [storeId], references: [id])
   

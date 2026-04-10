@@ -27,7 +27,12 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    if (!(options.body instanceof FormData)) {
+    /**
+     * AJUSTE CRÍTICO: 
+     * Só define application/json se houver um body e não for FormData.
+     * Isso evita que o Fastify rejeite requisições DELETE vazias.
+     */
+    if (options.body && !(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -53,6 +58,7 @@ class ApiClient {
         throw new Error(msg || `Erro ${response.status}`);
       }
 
+      // 204 No Content retorna objeto vazio para não quebrar o .json()
       return response.status === 204 ? ({} as T) : response.json();
     } catch (err: any) {
       console.error(`Erro na requisição [${path}]:`, err);
@@ -145,10 +151,12 @@ class ApiClient {
     return this.request<Banner[]>('/banners');
   }
 
-  async createBanner(data: { imageUrl: string; link?: string }) {
-    return this.request<Banner>('/banners', {
+  async uploadBanner(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<Banner>('/banners/upload', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: formData,
     });
   }
 
@@ -169,8 +177,12 @@ class ApiClient {
     return this.request<Order[]>(`/orders${query}`, { method: 'GET' });
   }
 
+  async getOrder(id: string) {
+    return this.request<Order>(`/orders/${id}`);
+  }
+
   async createOrder(data: CreateOrderData) {
-    return this.request<void>('/orders', {
+    return this.request<{ orderId: string; message: string }>('/orders', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -187,7 +199,6 @@ class ApiClient {
 export const api = new ApiClient();
 
 // --- DEFINIÇÕES DE TIPOS ---
-
 export type OrderStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
 export interface Product {
@@ -215,9 +226,13 @@ export interface Banner {
 
 export interface OrderItem {
   productId: string;
-  name: string;
+  name?: string;
   price: number;
   quantity: number;
+  product?: {
+    name: string;
+    imageUrl?: string | null;
+  };
 }
 
 export interface Order {
@@ -227,8 +242,14 @@ export interface Order {
   address: string;
   total: number;
   status: OrderStatus;
+  type: string;
+  deliveryFee: number;
   items: OrderItem[];
   createdAt: string;
+  store?: {
+    name: string;
+    phone: string;
+  };
 }
 
 export interface MenuData {
@@ -248,16 +269,16 @@ export interface MenuData {
 export interface CreateOrderData {
   customerName: string;
   customerPhone: string;
-  type: string;        // NOVO: 'DELIVERY', 'PICKUP' ou 'ONSITE'
-  zipCode?: string;    // NOVO
-  street?: string;     // NOVO
-  number?: string;     // NOVO
-  complement?: string; // NOVO
-  reference?: string;  // NOVO
-  city?: string;       // NOVO
-  state?: string;      // NOVO
-  deliveryFee: number; // NOVO
-  address: string;     // Mantido para compatibilidade ou resumo
+  type: 'DELIVERY' | 'PICKUP' | 'ONSITE';
+  zipCode?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  reference?: string | null;
+  city?: string | null;
+  state?: string | null;
+  deliveryFee: number;
+  address: string;
   total: number;
   storeId: string;
   items: { productId: string; quantity: number; price: number }[];

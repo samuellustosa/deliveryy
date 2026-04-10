@@ -9,7 +9,23 @@ export async function getStoreMenu(app: FastifyInstance) {
         slug: z.string().min(1)
       })
 
-      const { slug } = getMenuParams.parse(request.params)
+      let { slug } = getMenuParams.parse(request.params)
+
+      // Lógica extra: Se o slug for 'me', tentamos pegar o ID da loja do token
+      // Isso ajuda a carregar os dados da loja no Dashboard sem erro de 'undefined'
+      if (slug === 'me') {
+        try {
+          const user = await request.jwtVerify() as { sub: string }
+          const storeFromToken = await prisma.store.findUnique({
+            where: { id: user.sub }
+          })
+          if (storeFromToken) {
+            slug = storeFromToken.slug
+          }
+        } catch (e) {
+          return reply.status(401).send({ message: "Não autorizado para ver 'me'." })
+        }
+      }
 
       const store = await prisma.store.findUnique({
         where: { slug },
@@ -19,11 +35,13 @@ export async function getStoreMenu(app: FastifyInstance) {
           },
           products: {
             where: { isActive: true },
-            orderBy: { name: 'asc' }
+            orderBy: { name: 'asc' },
+            include: {
+              category: true // Útil para filtrar produtos por categoria no frontend
+            }
           },
-          // ADICIONE ISSO: Busca os banners cadastrados pelo lojista
           banners: {
-            orderBy: { createdAt: 'desc' } // Mostra os mais novos primeiro
+            orderBy: { createdAt: 'desc' }
           }
         }
       })
@@ -42,10 +60,12 @@ export async function getStoreMenu(app: FastifyInstance) {
         },
         categories: store.categories,
         products: store.products,
-        // Retorna a lista de banners para o frontend
         banners: store.banners || []
       }
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ message: "Slug inválido." })
+      }
       console.error(error)
       return reply.status(500).send({ message: "Erro ao carregar o cardápio." })
     }

@@ -6,15 +6,14 @@ export async function getCategories(app: FastifyInstance) {
     onRequest: [async (request) => await request.jwtVerify()] 
   }, async (request, reply) => {
     
-    const { sub: userId } = request.user as { sub: string }
+    // Agora o 'sub' já é o ID da LOJA diretamente
+    const { sub: storeId } = request.user as { sub: string }
 
     try {
-      // Busca categorias da loja que pertence ao usuário logado
+      // Busca categorias vinculadas diretamente ao ID da loja do token
       const categories = await prisma.category.findMany({
         where: {
-          store: {
-            userId: userId
-          }
+          storeId: storeId // Filtro direto e muito mais rápido
         },
         orderBy: {
           name: 'asc'

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, type Product } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
 import { Loader2, Store, ShoppingBag } from 'lucide-react';
-// Importação dos seus utilitários de formatação
+// Importação dos utilitários de formatação
 import { formatPhoneNumber, formatCurrency } from '@/utils/format'; 
 
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ import CartSheet from '@/components/menu/CartSheet';
 
 export default function PublicMenu() {
   const { slug } = useParams<{ slug: string }>();
-  const { items, addItem, updateQuantity, setDeliveryFee, clearCart } = useCart(); 
+  const { items, addItem, updateQuantity, setDeliveryFee } = useCart(); 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -26,19 +26,21 @@ export default function PublicMenu() {
     queryKey: ['menu', slug],
     queryFn: () => api.getMenu(slug!),
     enabled: !!slug,
-    placeholderData: undefined,
     refetchOnWindowFocus: false,
   });
 
+  // Atualiza a taxa de entrega quando o menu carrega
   useEffect(() => {
-    clearCart();
-    setSearch('');
-    setActiveCategory(null);
-
     if (menu?.store?.deliveryFee !== undefined) {
       setDeliveryFee(menu.store.deliveryFee);
     }
-  }, [slug, menu?.store?.deliveryFee, setDeliveryFee, clearCart]);
+  }, [menu?.store?.deliveryFee, setDeliveryFee]);
+
+  // Reseta filtros ao mudar de loja
+  useEffect(() => {
+    setSearch('');
+    setActiveCategory(null);
+  }, [slug]);
 
   const getItemQuantity = (productId: string) =>
     items.find(i => i.product.id === productId)?.quantity || 0;
@@ -133,7 +135,6 @@ export default function PublicMenu() {
           <PromoBanner banners={menu.banners || []} />
         </div>
         
-        {/* Exibição da Taxa de Entrega Formatada */}
         <div className="px-4 py-2 bg-primary/5 flex justify-between items-center border-b border-primary/10">
            <span className="text-xs font-medium text-primary uppercase tracking-wider">Entrega</span>
            <span className="text-sm font-bold text-primary">
@@ -144,6 +145,7 @@ export default function PublicMenu() {
         <div className="px-4 mt-4">
           <SearchBar value={search} onChange={setSearch} />
         </div>
+        
         <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b mt-2 shadow-sm">
           <CategoryNav
             categories={categoryNames}
@@ -151,6 +153,7 @@ export default function PublicMenu() {
             onSelect={handleCategorySelect}
           />
         </div>
+
         <div className="px-4 py-6 space-y-10">
           {totalFilteredProducts === 0 ? (
             <div className="text-center py-20 text-muted-foreground">
@@ -178,8 +181,6 @@ export default function PublicMenu() {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      // Note: Certifique-se de que o componente ProductCard 
-                      // também usa formatCurrency para exibir o preço.
                       quantity={getItemQuantity(product.id)}
                       onAdd={() => addItem(product, menu.store.id)} 
                       onUpdateQty={(qty) => updateQuantity(product.id, qty)}

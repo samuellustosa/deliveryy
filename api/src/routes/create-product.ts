@@ -7,21 +7,10 @@ export async function createProduct(app: FastifyInstance) {
     onRequest: [async (request) => await request.jwtVerify()]
   }, async (request, reply) => {
     try {
-      // 1. O 'sub' do token é o USER ID, não o STORE ID
-      const { sub: userId } = request.user as { sub: string }
+      // 1. O 'sub' do token agora JÁ É o ID da LOJA (Store ID)
+      const { sub: storeId } = request.user as { sub: string }
 
-      // 2. Precisamos encontrar a LOJA que pertence a este usuário
-      const store = await prisma.store.findFirst({
-        where: { userId }
-      })
-
-      if (!store) {
-        return reply.status(404).send({ message: 'Loja não encontrada para este usuário.' })
-      }
-
-      const storeId = store.id // Agora temos o ID real da loja
-
-      // 3. Validação do Body
+      // 2. Validação do Body
       const createProductSchema = z.object({
         name: z.string().min(1, "O nome do produto é obrigatório"),
         description: z.string().optional(),
@@ -32,11 +21,12 @@ export async function createProduct(app: FastifyInstance) {
 
       const { name, description, price, categoryId, imageUrl } = createProductSchema.parse(request.body)
 
-      // 4. Verificação: A categoria pertence a esta loja específica?
+      // 3. Verificação: A categoria pertence a esta loja específica?
+      // Isso impede que alguém use uma categoria de outra loja
       const category = await prisma.category.findFirst({
         where: {
           id: categoryId,
-          storeId: storeId, // Filtro usando o ID real da loja
+          storeId: storeId, // Filtro direto pelo ID da loja do token
         },
       })
 
@@ -46,14 +36,14 @@ export async function createProduct(app: FastifyInstance) {
         })
       }
 
-      // 5. Criação do Produto vinculada à loja correta
+      // 4. Criação do Produto vinculada à loja correta
       const product = await prisma.product.create({
         data: {
           name,
           description: description ?? null,
           price,
           categoryId,
-          storeId,
+          storeId, // ID direto do token
           imageUrl: imageUrl ?? null
         }
       })

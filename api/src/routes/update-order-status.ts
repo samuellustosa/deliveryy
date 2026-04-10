@@ -13,8 +13,7 @@ export async function updateOrderStatus(app: FastifyInstance) {
         orderId: z.string().uuid("ID do pedido inválido")
       })
 
-      // 3. Validação simplificada: Removido invalid_type_error e errorMap
-      // O TS só aceita 'message' ou nada nesta sua versão
+      // Correção do ZodEnum: Usando a chave 'message' conforme sugerido pelo erro do compilador
       const updateStatusBody = z.object({
         status: z.enum(['PENDING', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED'], {
           message: "Status inválido fornecido"
@@ -24,19 +23,27 @@ export async function updateOrderStatus(app: FastifyInstance) {
       const { orderId } = updateStatusParams.parse(request.params)
       const { status } = updateStatusBody.parse(request.body)
 
-      const { count } = await prisma.order.updateMany({
-        where: {
-          id: orderId,
-          storeId 
-        },
-        data: { status }
+      // 1. Busca o pedido para validar existência e propriedade
+      const order = await prisma.order.findUnique({
+        where: { id: orderId }
       })
 
-      if (count === 0) {
-        return reply.status(404).send({ 
-          message: "Pedido não encontrado ou sem permissão." 
+      if (!order) {
+        return reply.status(404).send({ message: "Pedido não encontrado." })
+      }
+
+      // 2. Verifica se a loja do token é a dona do pedido
+      if (order.storeId !== storeId) {
+        return reply.status(403).send({ 
+          message: "Você não tem permissão para alterar este pedido." 
         })
       }
+
+      // 3. Atualiza o status
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { status }
+      })
 
       return reply.status(204).send()
 
