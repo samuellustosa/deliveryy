@@ -1,3 +1,5 @@
+// api/src/routes/create-product.ts
+
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
@@ -7,26 +9,34 @@ export async function createProduct(app: FastifyInstance) {
     onRequest: [async (request) => await request.jwtVerify()]
   }, async (request, reply) => {
     try {
-      // 1. O 'sub' do token agora JÁ É o ID da LOJA (Store ID)
+      // 1. O 'sub' do token é o ID da LOJA (Store ID)
       const { sub: storeId } = request.user as { sub: string }
 
-      // 2. Validação do Body
+      // 2. Validação do Body (Incluindo o array de IDs dos complementos)
       const createProductSchema = z.object({
         name: z.string().min(1, "O nome do produto é obrigatório"),
-        description: z.string().optional(),
+        description: z.string().optional().nullable(),
         price: z.number().positive("O preço deve ser maior que zero"),
         categoryId: z.string().uuid("ID da categoria inválido"),
-        imageUrl: z.string().optional().nullable()
+        imageUrl: z.string().optional().nullable(),
+        // Recebe os IDs dos grupos selecionados no frontend
+        optionGroupsIds: z.array(z.string().uuid()).optional().default([])
       })
 
-      const { name, description, price, categoryId, imageUrl } = createProductSchema.parse(request.body)
+      const { 
+        name, 
+        description, 
+        price, 
+        categoryId, 
+        imageUrl, 
+        optionGroupsIds 
+      } = createProductSchema.parse(request.body)
 
-      // 3. Verificação: A categoria pertence a esta loja específica?
-      // Isso impede que alguém use uma categoria de outra loja
+      // 3. Verificação de Segurança: A categoria pertence a esta loja?
       const category = await prisma.category.findFirst({
         where: {
           id: categoryId,
-          storeId: storeId, // Filtro direto pelo ID da loja do token
+          storeId: storeId,
         },
       })
 
@@ -36,20 +46,29 @@ export async function createProduct(app: FastifyInstance) {
         })
       }
 
-      // 4. Criação do Produto vinculada à loja correta
+      // 4. Criação do Produto com vínculo aos OptionGroups
       const product = await prisma.product.create({
         data: {
           name,
           description: description ?? null,
           price,
           categoryId,
-          storeId, // ID direto do token
-          imageUrl: imageUrl ?? null
+          storeId,
+          imageUrl: imageUrl ?? null,
+          // Lógica de conexão Many-to-Many do Prisma
+          optionGroups: {
+            connect: optionGroupsIds.map(id => ({ id }))
+          }
+        },
+        // Incluímos no retorno para conferência
+        include: {
+          optionGroups: true
         }
       })
 
       return reply.status(201).send({ 
         productId: product.id,
+        product,
         message: "Produto criado com sucesso!"
       })
 
@@ -61,7 +80,7 @@ export async function createProduct(app: FastifyInstance) {
         })
       }
 
-      console.error(error)
+      console.error('Erro ao criar produto:', error)
       return reply.status(500).send({ message: "Erro interno ao criar produto." })
     }
   })

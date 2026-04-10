@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Package, ShoppingBag, LayoutDashboard, LogOut, UtensilsCrossed, Menu, X } from 'lucide-react';
+import { Package, ShoppingBag, LayoutDashboard, LogOut, UtensilsCrossed, Menu, X, ListPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Início', end: true },
   { to: '/dashboard/products', icon: Package, label: 'Produtos', end: false },
+  // NOVO ITEM ADICIONADO:
+  { to: '/dashboard/complements', icon: ListPlus, label: 'Complementos', end: false }, 
   { to: '/dashboard/orders', icon: ShoppingBag, label: 'Pedidos', end: false },
 ];
 

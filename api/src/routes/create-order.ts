@@ -1,3 +1,5 @@
+// api/src/routes/create-order.ts
+
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
@@ -9,7 +11,6 @@ export async function createOrder(app: FastifyInstance) {
         customerName: z.string().min(1, "Nome é obrigatório"),
         customerPhone: z.string().min(8, "Telefone inválido"),
         type: z.enum(['DELIVERY', 'PICKUP', 'ONSITE']),
-        // Usamos .nullable() ou transformamos undefined em null para o Prisma
         zipCode: z.string().optional().nullable(),
         street: z.string().optional().nullable(),
         number: z.string().optional().nullable(),
@@ -24,7 +25,12 @@ export async function createOrder(app: FastifyInstance) {
         items: z.array(z.object({
           productId: z.string().uuid(),
           quantity: z.number().int().positive(),
-          price: z.number().positive()
+          price: z.number().positive(),
+          // NOVO: Suporte para adicionais de Açaí ou metades de Pizza
+          selectedOptions: z.array(z.object({
+            name: z.string(),
+            price: z.number()
+          })).optional().nullable()
         })).min(1)
       })
 
@@ -38,13 +44,11 @@ export async function createOrder(app: FastifyInstance) {
         return reply.status(404).send({ message: "Loja não encontrada." })
       }
 
-      // 3. Criando o pedido garantindo que 'undefined' vire 'null'
       const order = await prisma.order.create({
         data: {
           customerName: data.customerName,
           customerPhone: data.customerPhone,
           type: data.type,
-          // O operador ?? null garante que se for undefined, envia null para o banco
           zipCode: data.zipCode ?? null,
           street: data.street ?? null,
           number: data.number ?? null,
@@ -61,7 +65,9 @@ export async function createOrder(app: FastifyInstance) {
             create: data.items.map(item => ({
               productId: item.productId,
               quantity: item.quantity,
-              price: item.price
+              price: item.price,
+              // GRAVAÇÃO DAS OPÇÕES NO BANCO (JSON)
+              observations: item.selectedOptions ?? []
             }))
           }
         }
@@ -76,7 +82,7 @@ export async function createOrder(app: FastifyInstance) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ message: "Dados inválidos", errors: error.flatten().fieldErrors })
       }
-      console.error(error)
+      console.error('Erro ao processar pedido:', error)
       return reply.status(500).send({ message: "Erro ao processar pedido." })
     }
   })

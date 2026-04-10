@@ -1,10 +1,11 @@
+// api/src/server.ts
 import fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import jwt from '@fastify/jwt';
 import { ZodError } from 'zod';
 
-// Importações das rotas
+// Importações das rotas existentes
 import { createStore } from './routes/create-store.js';
 import { createProduct } from './routes/create-product.js';
 import { getStores } from './routes/get-stores.js';
@@ -26,9 +27,14 @@ import { deleteBanner } from './routes/delete-banner.js';
 import { getOrderDetails } from './routes/get-order-details.js';
 import { uploadBanner } from './routes/upload-banner.js'
 
+// --- NOVAS IMPORTAÇÕES DE COMPLEMENTOS ---
+import { createOptionGroup } from './routes/create-option-group.js';
+import { getOptionGroups } from './routes/get-option-groups.js';
+import { deleteOptionGroup } from './routes/delete-option-group.js'; // Caso já tenha criado o arquivo
+
 const app = fastify();
 
-// 1. Registro de Plugins (CORS corrigido para aceitar PATCH)
+// 1. Registro de Plugins
 app.register(multipart);
 app.register(cors, { 
   origin: true,
@@ -82,6 +88,11 @@ app.register(getBanners);
 app.register(deleteBanner);
 app.register(getOrderDetails);
 app.register(uploadBanner);
+
+// --- REGISTRO DAS NOVAS ROTAS DE COMPLEMENTOS ---
+app.register(createOptionGroup);
+app.register(getOptionGroups);
+app.register(deleteOptionGroup); 
 
 // 5. Inicialização
 app.listen({ 

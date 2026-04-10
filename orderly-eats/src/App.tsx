@@ -10,10 +10,11 @@ import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
+import Complements from "./pages/Complements"; // Importação da nova página
 import Orders from "./pages/Orders";
 import Banners from "./pages/Banners";
 import PublicMenu from "./pages/PublicMenu";
-import TrackOrder from "./pages/TrackOrder"; // Importação da nova página de acompanhamento
+import TrackOrder from "./pages/TrackOrder"; 
 import DashboardLayout from "./components/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -39,13 +40,13 @@ const App = () => (
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/m/:slug" element={<PublicMenu />} />
               
-              {/* Rota pública para o cliente acompanhar o pedido em tempo real */}
               <Route path="/track/:id" element={<TrackOrder />} />
               
-              {/* Rota do Dashboard e suas sub-rotas protegidas */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />
                 <Route path="products" element={<Products />} />
+                {/* ROTA DE COMPLEMENTOS ADICIONADA AQUI */}
+                <Route path="complements" element={<Complements />} /> 
                 <Route path="orders" element={<Orders />} />
                 <Route path="banners" element={<Banners />} />
               </Route>

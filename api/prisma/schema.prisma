@@ -1,3 +1,5 @@
+// api/prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,7 +25,7 @@ model Store {
   slug        String   @unique
   description String?
   logoUrl     String?  // FOTO DE PERFIL
-  coverUrl    String?  // BANNER GRANDE DO NAV
+  coverUrl    String?  // BANNER GRANDE DO NAV (FIXO POR NICHO NO FRONT)
   niche       String   @default("gastronomia") // acaiteria, pizzaria, etc
   phone       String   @unique
   password    String
@@ -37,7 +39,7 @@ model Store {
   products     Product[]
   orders       Order[]
   banners      Banner[]
-  optionGroups OptionGroup[] // GRUPOS DE ADICIONAIS
+  optionGroups OptionGroup[] // GRUPOS DE ADICIONAIS (Bordas, Sabores, Frutas)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,7 +92,7 @@ model Product {
   storeId      String
   store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderItems   OrderItem[]
-  optionGroups OptionGroup[] // RELAÇÃO COM ADICIONAIS
+  optionGroups OptionGroup[] // RELAÇÃO COM ADICIONAIS (N-N)
   
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -103,7 +105,7 @@ model Order {
   id            String      @id @default(uuid())
   customerName  String
   customerPhone String
-  type          String      
+  type          String      // DELIVERY, PICKUP, ONSITE
   zipCode       String?
   street        String?
   number        String?
@@ -142,6 +144,10 @@ model OrderItem {
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product @relation(fields: [productId], references: [id])
+
+  // CAMPO CHAVE PARA NICHOS: Armazena os adicionais escolhidos em formato JSON
+  // Ex: [{"name": "Borda Catupiry", "price": 5.0}, {"name": "Metade Calabresa"}]
+  observations Json?   
 }
 
 enum OrderStatus {

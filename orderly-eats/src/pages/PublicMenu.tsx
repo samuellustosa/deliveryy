@@ -1,10 +1,11 @@
+// orderly-eats/src/pages/PublicMenu.tsx
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, type Product } from '@/lib/api';
 import { useCart } from '@/contexts/CartContext';
-import { Loader2, Store, ShoppingBag, MapPin, Clock } from 'lucide-react';
-import { formatPhoneNumber, formatCurrency } from '@/utils/format'; 
+import { Loader2, Store, MapPin, Clock } from 'lucide-react';
+import { formatCurrency } from '@/utils/format'; 
 
 import { Badge } from '@/components/ui/badge';
 import PromoBanner from '@/components/menu/PromoBanner';
@@ -13,13 +14,11 @@ import SearchBar from '@/components/menu/SearchBar';
 import ProductCard from '@/components/menu/ProductCard';
 import CartSheet from '@/components/menu/CartSheet';
 
-// IMAGENS FIXAS E CORES DEFINIDAS POR VOCÊ (O LOJISTA NÃO MUDA ISSO)
 const NICHE_THEMES: Record<string, any> = {
   acaiteria: {
     primary: "bg-purple-700",
     primaryText: "text-purple-700",
     bgLight: "bg-purple-50",
-    // Banner Fixo para Açaí
     banner: "https://images.unsplash.com/photo-1594910411242-4589d8939626?q=80&w=1200&auto=format",
     gradient: "from-purple-900/90"
   },
@@ -27,7 +26,6 @@ const NICHE_THEMES: Record<string, any> = {
     primary: "bg-red-600",
     primaryText: "text-red-600",
     bgLight: "bg-red-50",
-    // Banner Fixo para Pizza
     banner: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=1200&auto=format",
     gradient: "from-red-900/90"
   },
@@ -35,7 +33,6 @@ const NICHE_THEMES: Record<string, any> = {
     primary: "bg-orange-500",
     primaryText: "text-orange-500",
     bgLight: "bg-orange-50",
-    // Banner Fixo para Geral
     banner: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1200&auto=format",
     gradient: "from-orange-900/90"
   }
@@ -65,8 +62,9 @@ export default function PublicMenu() {
     }
   }, [menu?.store?.deliveryFee, setDeliveryFee]);
 
+  // Modificado para considerar itens com opções diferentes no contador visual
   const getItemQuantity = (productId: string) =>
-    items.find(i => i.product.id === productId)?.quantity || 0;
+    items.filter(i => i.product.id === productId).reduce((acc, curr) => acc + curr.quantity, 0);
 
   const { grouped, categoryNames } = useMemo(() => {
     if (!menu) return { grouped: {} as Record<string, Product[]>, categoryNames: [] as string[] };
@@ -123,7 +121,7 @@ export default function PublicMenu() {
     <div className="min-h-screen bg-gray-50 pb-28 font-sans">
       <div className="max-w-[600px] mx-auto bg-white min-h-screen shadow-2xl relative border-x border-gray-100">
         
-        {/* BANNER FIXO POR NICHO (O lojista não tem acesso a mudar isso) */}
+        {/* BANNER FIXO POR NICHO */}
         <div className="relative h-52 w-full">
           <img 
             src={theme.banner} 
@@ -132,7 +130,6 @@ export default function PublicMenu() {
           />
           <div className={`absolute inset-0 bg-gradient-to-t ${theme.gradient} to-transparent opacity-80`} />
           
-          {/* FOTO DE PERFIL (LOGO DA LOJA - Isso ele pode mudar) */}
           <div className="absolute -bottom-10 left-6">
             <div className="h-24 w-24 rounded-3xl border-4 border-white shadow-2xl overflow-hidden bg-white">
               <img 
@@ -144,7 +141,6 @@ export default function PublicMenu() {
           </div>
         </div>
 
-        {/* INFO DA LOJA */}
         <div className="pt-14 px-6 pb-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-black tracking-tighter text-gray-900 uppercase">
@@ -161,7 +157,6 @@ export default function PublicMenu() {
           <p className="text-xs text-gray-500 mt-3 leading-relaxed italic">"{menu.store.description}"</p>
         </div>
 
-        {/* DESTAQUE DA TAXA (DINÂMICO PELO TEMA) */}
         <div className={`mx-6 mb-6 p-4 rounded-2xl ${theme.bgLight} border border-dashed ${theme.primary}/30 flex justify-between items-center`}>
            <div className="flex flex-col">
               <span className={`text-[10px] font-black uppercase tracking-tight ${theme.primaryText}`}>Taxa de Entrega</span>
@@ -172,12 +167,10 @@ export default function PublicMenu() {
            </span>
         </div>
 
-        {/* BANNERS PROMOCIONAIS (OS QUE ELE CADASTRA NO DASHBOARD) */}
         <div className="px-6 mb-6">
           <PromoBanner banners={menu.banners || []} />
         </div>
 
-        {/* BUSCA E CATEGORIAS STICKY */}
         <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md pt-2 border-b">
           <div className="px-6">
             <SearchBar value={search} onChange={setSearch} />
@@ -189,7 +182,6 @@ export default function PublicMenu() {
           />
         </div>
 
-        {/* PRODUTOS */}
         <div className="px-6 py-8 space-y-12">
           {Object.entries(filteredGrouped).map(([category, products]) => (
             <div
@@ -210,8 +202,9 @@ export default function PublicMenu() {
                   <ProductCard
                     key={product.id}
                     product={product}
+                    storeNiche={menu.store.niche} // Passando o nicho para o cálculo da maior metade
                     quantity={getItemQuantity(product.id)}
-                    onAdd={() => addItem(product, menu.store.id)} 
+                    onAdd={(options) => addItem(product, menu.store.id, options)} // Enviando opções para o carrinho
                     onUpdateQty={(qty) => updateQuantity(product.id, qty)}
                   />
                 ))}

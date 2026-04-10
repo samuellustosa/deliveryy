@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Upload, Loader2, ImageIcon, FolderPlus } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Pencil, Trash2, Upload, Loader2, ImageIcon, FolderPlus, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Products() {
@@ -23,7 +24,13 @@ export default function Products() {
   // Estados para o formulário de Produto
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', price: '', categoryId: '' });
+  const [form, setForm] = useState({ 
+    name: '', 
+    description: '', 
+    price: '', 
+    categoryId: '',
+    optionGroupsIds: [] as string[] 
+  });
 
   // 1. Busca de produtos
   const { data: products, isLoading: loadingProducts } = useQuery({ 
@@ -31,26 +38,28 @@ export default function Products() {
     queryFn: () => api.getProducts() 
   });
 
-  // 2. Busca de categorias (Ajustado para usar a rota direta)
+  // 2. Busca de categorias
   const { data: categories, isLoading: loadingCategories } = useQuery({ 
     queryKey: ['categories'], 
     queryFn: () => api.getCategories() 
+  });
+
+  // 3. Busca de grupos de complementos (Option Groups)
+  const { data: optionGroups } = useQuery({
+    queryKey: ['option-groups'],
+    queryFn: () => api.getOptionGroups()
   });
 
   // Mutation para criar Categoria
   const createCategoryMutation = useMutation({
     mutationFn: (name: string) => api.createCategory({ name }),
     onSuccess: () => {
-      // Invalida 'categories' para forçar o Select a atualizar imediatamente
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      
       toast.success('Categoria criada com sucesso!');
       setCategoryDialogOpen(false);
       setNewCategoryName('');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Erro ao criar categoria');
-    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao criar categoria'),
   });
 
   // Mutation para criar/editar Produto
@@ -61,9 +70,7 @@ export default function Products() {
       toast.success(editing ? 'Produto atualizado!' : 'Produto criado!');
       closeDialog();
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Erro ao processar produto');
-    },
+    onError: (err: any) => toast.error(err.message || 'Erro ao processar produto'),
   });
 
   const deleteMutation = useMutation({
@@ -92,17 +99,21 @@ export default function Products() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', description: '', price: '', categoryId: '' });
+    setForm({ name: '', description: '', price: '', categoryId: '', optionGroupsIds: [] });
     setDialogOpen(true);
   };
 
   const openEdit = (p: Product) => {
     setEditing(p);
+    // Recupera os IDs dos grupos já vinculados a este produto
+    const currentGroupsIds = p.optionGroups?.map(g => g.id) || [];
+    
     setForm({ 
       name: p.name, 
       description: p.description || '', 
       price: String(p.price), 
-      categoryId: p.categoryId || '' 
+      categoryId: p.categoryId || '',
+      optionGroupsIds: currentGroupsIds
     });
     setDialogOpen(true);
   };
@@ -110,6 +121,16 @@ export default function Products() {
   const closeDialog = () => {
     setDialogOpen(false);
     setEditing(null);
+  };
+
+  const handleGroupToggle = (groupId: string) => {
+    setForm(prev => {
+      const exists = prev.optionGroupsIds.includes(groupId);
+      if (exists) {
+        return { ...prev, optionGroupsIds: prev.optionGroupsIds.filter(id => id !== groupId) };
+      }
+      return { ...prev, optionGroupsIds: [...prev.optionGroupsIds, groupId] };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,7 +141,8 @@ export default function Products() {
       name: form.name, 
       description: form.description, 
       price: Number(form.price), 
-      categoryId: form.categoryId 
+      categoryId: form.categoryId,
+      optionGroupsIds: form.optionGroupsIds 
     });
   };
 
@@ -135,7 +157,6 @@ export default function Products() {
         <h2 className="text-2xl font-bold">Produtos</h2>
         
         <div className="flex gap-2">
-          {/* DIALOG DE NOVA CATEGORIA */}
           <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -143,9 +164,7 @@ export default function Products() {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nova Categoria</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
                   <Label>Nome da Categoria</Label>
@@ -166,12 +185,11 @@ export default function Products() {
             </DialogContent>
           </Dialog>
 
-          {/* DIALOG DE NOVO PRODUTO */}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Novo produto</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md overflow-y-auto max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle>{editing ? 'Editar produto' : 'Novo produto'}</DialogTitle>
               </DialogHeader>
@@ -195,17 +213,9 @@ export default function Products() {
                       <SelectValue placeholder={loadingCategories ? "Carregando..." : "Selecione uma categoria"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories && categories.length > 0 ? (
-                        categories.map((cat: any) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                          Nenhuma categoria encontrada.
-                        </div>
-                      )}
+                      {categories?.map((cat: any) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -221,20 +231,47 @@ export default function Products() {
                 <div className="space-y-2">
                   <Label>Preço (R$)</Label>
                   <Input 
-                    type="number" 
-                    step="0.01" 
+                    type="number" step="0.01" 
                     value={form.price} 
                     onChange={e => setForm(f => ({ ...f, price: e.target.value }))} 
                     required 
                   />
                 </div>
 
+                {/* --- SEÇÃO DE VÍNCULO DE COMPLEMENTOS --- */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-primary" />
+                    <Label className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">
+                      Complementos Disponíveis
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 border rounded-lg p-3 bg-muted/30">
+                    {optionGroups && optionGroups.length > 0 ? optionGroups.map(group => (
+                      <div key={group.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`group-${group.id}`}
+                          checked={form.optionGroupsIds.includes(group.id)}
+                          onCheckedChange={() => handleGroupToggle(group.id)}
+                        />
+                        <label 
+                          htmlFor={`group-${group.id}`}
+                          className="text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {group.name}
+                        </label>
+                      </div>
+                    )) : (
+                      <p className="text-[10px] text-center text-muted-foreground italic py-2">
+                        Nenhum grupo de complemento cadastrado. <br/>
+                        Vá na aba "Complementos" para criar.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    editing ? 'Salvar Alterações' : 'Criar Produto'
-                  )}
+                  {createMutation.isPending ? <Loader2 className="animate-spin" /> : editing ? 'Salvar Alterações' : 'Criar Produto'}
                 </Button>
               </form>
             </DialogContent>
@@ -257,12 +294,7 @@ export default function Products() {
                   <ImageIcon className="h-10 w-10 text-muted-foreground" />
                 )}
                 <label className="absolute bottom-2 right-2 cursor-pointer">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={e => handleImageUpload(product.id, e)} 
-                  />
+                  <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(product.id, e)} />
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-md hover:bg-accent transition-colors">
                     <Upload className="h-4 w-4 text-foreground" />
                   </div>
@@ -272,40 +304,31 @@ export default function Products() {
                 <div className="flex items-start justify-between">
                   <div className="max-w-[70%]">
                     <h3 className="font-semibold truncate">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description}
+                    <p className="text-[11px] text-muted-foreground line-clamp-2">
+                      {product.description || 'Sem descrição'}
                     </p>
                   </div>
                   <Badge variant={product.isActive ? 'default' : 'secondary'}>
                     {product.isActive ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
-                <p className="text-lg font-bold text-primary">
-                  R$ {product.price.toFixed(2)}
-                </p>
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={product.isActive}
-                      onCheckedChange={isActive => toggleMutation.mutate({ id: product.id, isActive })}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {product.isActive ? 'Visível' : 'Oculto'}
-                    </span>
+                
+                {/* Visualização dos complementos no card do Dashboard */}
+                {product.optionGroups && product.optionGroups.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {product.optionGroups.map(g => (
+                      <Badge key={g.id} variant="outline" className="text-[9px] py-0 px-1 border-primary/20 text-primary uppercase">
+                        {g.name}
+                      </Badge>
+                    ))}
                   </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <p className="text-lg font-bold text-primary">R$ {product.price.toFixed(2)}</p>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(product)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => {
-                        if (confirm("Deseja realmente excluir este produto?")) {
-                          deleteMutation.mutate(product.id);
-                        }
-                      }}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(product)}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => confirm("Excluir produto?") && deleteMutation.mutate(product.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>

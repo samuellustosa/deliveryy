@@ -27,11 +27,6 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    /**
-     * AJUSTE CRÍTICO: 
-     * Só define application/json se houver um body e não for FormData.
-     * Isso evita que o Fastify rejeite requisições DELETE vazias.
-     */
     if (options.body && !(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
     }
@@ -66,7 +61,6 @@ class ApiClient {
   }
 
   // --- AUTENTICAÇÃO ---
-  
   signup(data: { email: string; password: string }) {
     return this.request<{ token: string; message: string }>('/signup', {
       method: 'POST',
@@ -86,14 +80,14 @@ class ApiClient {
     return this.request<Product[]>('/products');
   }
 
-  async createProduct(data: Partial<Product>) {
+  async createProduct(data: Partial<Product> & { optionGroupsIds?: string[] }) {
     return this.request<Product>('/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateProduct(id: string, data: Partial<Product>) {
+  async updateProduct(id: string, data: Partial<Product> & { optionGroupsIds?: string[] }) {
     return this.request<Product>(`/products/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -142,6 +136,29 @@ class ApiClient {
     return this.request<{ categoryId: string; message: string }>('/categories', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  // --- COMPLEMENTOS (OPTION GROUPS) ---
+  async getOptionGroups() {
+    return this.request<OptionGroup[]>('/option-groups');
+  }
+
+  async createOptionGroup(data: { 
+    name: string; 
+    minOptions: number; 
+    maxOptions: number; 
+    options: { name: string; price: number }[] 
+  }) {
+    return this.request<OptionGroup>('/option-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteOptionGroup(id: string) {
+    return this.request<void>(`/option-groups/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -200,6 +217,20 @@ export const api = new ApiClient();
 // --- DEFINIÇÕES DE TIPOS ---
 export type OrderStatus = 'PENDING' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
+export interface Option {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface OptionGroup {
+  id: string;
+  name: string;
+  minOptions: number;
+  maxOptions: number;
+  options: Option[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -208,6 +239,7 @@ export interface Product {
   categoryId?: string;
   imageUrl?: string | null;
   isActive: boolean;
+  optionGroups?: OptionGroup[]; // Para listar no Menu Público
 }
 
 export interface Category {
@@ -232,6 +264,7 @@ export interface OrderItem {
     name: string;
     imageUrl?: string | null;
   };
+  selectedOptions?: { name: string; price: number }[]; 
 }
 
 export interface Order {
@@ -260,8 +293,8 @@ export interface MenuData {
     phone: string;
     niche: string;
     deliveryFee: number;
-    logoUrl?: string | null;   // NOVO: Foto de perfil reconhecida
-    coverUrl?: string | null;  // NOVO: Banner reconhecido
+    logoUrl?: string | null;
+    coverUrl?: string | null;
   };
   products: Product[];
   categories: Category[];
@@ -283,10 +316,16 @@ export interface CreateOrderData {
   address: string;
   total: number;
   storeId: string;
-  items: { productId: string; quantity: number; price: number }[];
+  items: { 
+    productId: string; 
+    quantity: number; 
+    price: number;
+    selectedOptions?: { name: string; price: number }[] | null;
+  }[];
 }
 
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedOptions?: { name: string; price: number }[];
 }
