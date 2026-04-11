@@ -14,7 +14,6 @@ import SearchBar from '@/components/menu/SearchBar';
 import ProductCard from '@/features/menu/components/ProductCard';
 import CartSheet from '@/components/menu/CartSheet';
 
-// Configuração de temas por nicho (UX Dinâmica)
 const NICHE_THEMES: Record<string, any> = {
   acaiteria: {
     primary: "bg-purple-700",
@@ -63,10 +62,19 @@ export default function PublicMenu() {
     }
   }, [menu?.store?.deliveryFee, setDeliveryFee]);
 
-  // Quantidade total do produto no carrinho (soma todas as combinações de adicionais)
-  const getItemQuantity = (productId: string) =>
-    items.filter(i => i.product.id === productId).reduce((acc, curr) => acc + curr.quantity, 0);
+  // Identifica o dia atual para o filtro inteligente de disponibilidade
+  const currentDay = useMemo(() => {
+    const days = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    return days[new Date().getDay()];
+  }, []);
 
+  // Calcula a quantidade de um produto específico no carrinho
+  const getItemQuantity = (productId: string) =>
+    items
+      .filter((i: any) => i.product.id === productId)
+      .reduce((acc: number, curr: any) => acc + curr.quantity, 0);
+
+  // Agrupa os produtos por categoria
   const { grouped, categoryNames } = useMemo(() => {
     if (!menu) return { grouped: {} as Record<string, Product[]>, categoryNames: [] as string[] };
     const categories = menu.categories || [];
@@ -83,16 +91,29 @@ export default function PublicMenu() {
     return { grouped: g, categoryNames: Object.keys(g).sort() };
   }, [menu]);
 
+  // Filtra os produtos por Busca, Categoria ativa e Disponibilidade do Dia
   const filteredGrouped = useMemo(() => {
     const result: Record<string, Product[]> = {};
     const q = search.toLowerCase();
+
     for (const [cat, products] of Object.entries(grouped)) {
       if (activeCategory && cat !== activeCategory) continue;
-      const filtered = q ? products.filter(p => p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q)) : products;
+
+      const filtered = products.filter(p => {
+        const matchesSearch = q 
+          ? p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q)
+          : true;
+        
+        // Se availableDays for null ou incluir o dia de hoje, o produto aparece
+        const isAvailableToday = !p.availableDays || p.availableDays.includes(currentDay);
+
+        return matchesSearch && isAvailableToday;
+      });
+
       if (filtered.length > 0) result[cat] = filtered;
     }
     return result;
-  }, [grouped, search, activeCategory]);
+  }, [grouped, search, activeCategory, currentDay]);
 
   const handleCategorySelect = (cat: string | null) => {
     setActiveCategory(cat);
@@ -116,7 +137,6 @@ export default function PublicMenu() {
     <div className="flex flex-col items-center justify-center min-h-screen">
       <Store className="h-16 w-16 text-muted-foreground mb-4" />
       <h1 className="text-2xl font-bold uppercase tracking-tighter">Loja não encontrada</h1>
-      <p className="text-sm text-muted-foreground mt-2">Verifique o link e tente novamente.</p>
     </div>
   );
 
@@ -124,10 +144,10 @@ export default function PublicMenu() {
     <div className="min-h-screen bg-gray-50 pb-28 font-sans">
       <div className="max-w-[600px] mx-auto bg-white min-h-screen shadow-2xl relative border-x border-gray-100">
         
-        {/* Banner Dinâmico */}
+        {/* Header com Banner e Logo */}
         <div className="relative h-52 w-full">
           <img 
-            src={menu.store.bannerUrl || theme.banner} 
+            src={menu.store.coverUrl || theme.banner} 
             className="w-full h-full object-cover" 
             alt="Banner da Loja"
           />
@@ -161,23 +181,22 @@ export default function PublicMenu() {
           <p className="text-xs text-gray-500 mt-3 leading-relaxed italic">"{menu.store.description}"</p>
         </div>
 
-        {/* Taxa de Entrega Destacada */}
+        {/* Taxa de Entrega */}
         <div className={`mx-6 mb-6 p-4 rounded-2xl ${theme.bgLight} border border-dashed ${theme.primary}/30 flex justify-between items-center`}>
             <div className="flex flex-col">
               <span className={`text-[10px] font-black uppercase tracking-tight ${theme.primaryText}`}>Entrega</span>
-              <span className="text-[9px] text-gray-400 font-bold uppercase">Taxa fixa para a região</span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase">Pagamento na entrega</span>
             </div>
             <span className={`text-base font-black ${theme.primaryText}`}>
               {menu.store.deliveryFee > 0 ? formatCurrency(menu.store.deliveryFee) : 'GRÁTIS'}
             </span>
         </div>
 
-        {/* Banners Promocionais */}
+        {/* Banners e Busca */}
         <div className="px-6 mb-6">
           <PromoBanner banners={menu.banners || []} />
         </div>
 
-        {/* Navegação Fixa */}
         <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md pt-2 border-b">
           <div className="px-6">
             <SearchBar value={search} onChange={setSearch} />
@@ -189,7 +208,7 @@ export default function PublicMenu() {
           />
         </div>
 
-        {/* Lista de Produtos */}
+        {/* Listagem de Produtos por Categoria */}
         <div className="px-6 py-8 space-y-12">
           {Object.entries(filteredGrouped).map(([category, products]) => (
             <div
@@ -213,7 +232,6 @@ export default function PublicMenu() {
                     storeNiche={menu.store.niche} 
                     quantity={getItemQuantity(product.id)}
                     onAdd={(options) => addItem(product, menu.store.id, options)} 
-                    // Passamos as opções para o updateQty conseguir identificar qual item alterar
                     onUpdateQty={(qty, options) => updateQuantity(product.id, qty, options)}
                   />
                 ))}
@@ -223,7 +241,6 @@ export default function PublicMenu() {
         </div>
       </div>
       
-      {/* Carrinho Flutuante */}
       <CartSheet storeId={menu.store.id} />
     </div>
   );

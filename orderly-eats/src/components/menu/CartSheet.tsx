@@ -1,3 +1,4 @@
+// orderly-eats/src/components/menu/CartSheet.tsx
 import { useState } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, Loader2, User, Send, Home, Store, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -85,18 +86,17 @@ export default function CartSheet({ storeId }: CartSheetProps) {
         items: items.map(i => ({ 
           productId: i.product.id, 
           quantity: i.quantity, 
-          price: i.product.price 
+          price: i.product.price,
+          // Enviando as opções selecionadas para o backend
+          options: i.selectedOptions 
         })),
       });
       
       toast.success('Pedido enviado com sucesso! 🎉');
-      
-      // Limpar carrinho e fechar modal
       clearCart();
       setCheckoutOpen(false);
       setCartOpen(false);
       
-      // Redirecionar para a página de acompanhamento
       if (response && response.orderId) {
         window.location.href = `/track/${response.orderId}`;
       }
@@ -120,90 +120,106 @@ export default function CartSheet({ storeId }: CartSheetProps) {
           <span className="font-semibold text-sm">Ver carrinho</span>
           <Separator orientation="vertical" className="h-5 bg-primary-foreground/30" />
           <span className="font-bold text-sm">{formatCurrency(currentTotal)}</span>
-          <Badge variant="secondary" className="text-xs ml-1">{itemCount}</Badge>
+          <Badge variant="secondary" className="text-[10px] h-5 min-w-5 px-1 ml-1">{itemCount}</Badge>
         </button>
       </SheetTrigger>
       
-      <SheetContent className="flex flex-col w-full sm:max-w-md overflow-y-auto border-l-0 sm:border-l">
-        <SheetHeader className="pb-4">
-          <SheetTitle className="flex items-center gap-2 text-xl font-black">
-            <ShoppingCart className="h-6 w-6 text-primary" /> Seu Pedido
-          </SheetTitle>
-        </SheetHeader>
+      <SheetContent className="flex flex-col w-full sm:max-w-md overflow-hidden border-l-0 sm:border-l p-0">
+        <div className="p-6 border-b bg-white">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2 text-xl font-black">
+              <ShoppingCart className="h-6 w-6 text-primary" /> Seu Pedido
+            </SheetTitle>
+          </SheetHeader>
+        </div>
 
-        <div className="flex-1 overflow-y-auto py-2 space-y-3">
-          {items.map(item => (
-            <div key={item.product.id} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-gray-100">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{item.product.name}</p>
-                <p className="text-xs text-muted-foreground">{formatCurrency(item.product.price)} cada</p>
-                <p className="text-sm font-black text-primary mt-1">
-                  {formatCurrency(item.product.price * item.quantity)}
-                </p>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {items.map((item, index) => (
+            <div key={`${item.product.id}-${index}`} className="space-y-2 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 leading-tight mb-1">{item.product.name}</p>
+                  
+                  {/* EXIBIÇÃO DAS OPÇÕES SELECIONADAS (PIZZA/AÇAÍ) */}
+                  {item.selectedOptions && item.selectedOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {item.selectedOptions.map((opt, i) => (
+                        <span key={i} className="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded-full text-gray-600 font-medium">
+                          + {opt.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <p className="text-xs font-black text-primary">
+                    {formatCurrency((item.product.price + (item.selectedOptions?.reduce((a, b) => a + b.price, 0) || 0)) * item.quantity)}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white p-1 rounded-full border shadow-sm">
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-7 w-7 rounded-full" 
+                    onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.selectedOptions)}
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                  <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-7 w-7 rounded-full" 
+                    onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.selectedOptions)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 bg-white p-1 rounded-full border shadow-sm">
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive/50 hover:text-destructive rounded-full" onClick={() => removeItem(item.product.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
             </div>
           ))}
         </div>
 
-        <div className="border-t pt-4 bg-white sticky bottom-0 space-y-4 mt-auto">
-          <div className="space-y-1.5 px-1">
-            <div className="flex justify-between text-sm text-gray-500">
+        <div className="p-6 border-t bg-white space-y-4">
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
             {orderForm.orderType === 'DELIVERY' && (
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Taxa de entrega</span>
-                <span className={deliveryFee === 0 ? "text-green-600 font-bold" : "font-medium"}>
+              <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                <span>Entrega</span>
+                <span className={deliveryFee === 0 ? "text-green-600" : ""}>
                   {deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-lg font-black pt-2">
-              <span>Total</span>
-              <span className="text-primary text-2xl">{formatCurrency(currentTotal)}</span>
+            <div className="flex justify-between items-end pt-2">
+              <span className="text-sm font-black uppercase">Total</span>
+              <span className="text-2xl font-black text-primary">{formatCurrency(currentTotal)}</span>
             </div>
           </div>
 
           {!checkoutOpen ? (
-            <Button className="w-full h-12 rounded-2xl text-md font-bold shadow-lg shadow-primary/20" onClick={() => setCheckoutOpen(true)}>
-              Continuar para Pagamento
+            <Button className="w-full h-12 rounded-2xl text-sm font-black uppercase italic tracking-widest shadow-lg shadow-primary/20" onClick={() => setCheckoutOpen(true)}>
+              Continuar
             </Button>
           ) : (
-            <div className="space-y-4 animate-in slide-in-from-bottom-6 duration-500 pb-6">
+            <div className="space-y-4 animate-in slide-in-from-bottom-6 duration-500 max-h-[400px] overflow-y-auto pr-1">
               <Separator />
-              <div className="flex items-center gap-2 pb-2">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <h3 className="font-bold text-gray-800">Seus Dados</h3>
-              </div>
-              
               <div className="grid grid-cols-1 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-gray-600 ml-1">Nome Completo</Label>
-                  <Input value={orderForm.customerName} onChange={e => setOrderForm(f => ({ ...f, customerName: e.target.value }))} placeholder="Como te chamamos?" className="rounded-xl" />
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase font-black text-gray-400 ml-1">Seu Nome</Label>
+                  <Input value={orderForm.customerName} onChange={e => setOrderForm(f => ({ ...f, customerName: e.target.value }))} placeholder="Como te chamamos?" className="rounded-xl h-11 border-gray-100 bg-gray-50 focus:bg-white" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-gray-600 ml-1">WhatsApp</Label>
-                  <Input value={orderForm.customerPhone} onChange={e => setOrderForm(f => ({ ...f, customerPhone: formatPhoneNumber(e.target.value) }))} placeholder="(86) 99999-9999" className="rounded-xl" />
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase font-black text-gray-400 ml-1">WhatsApp</Label>
+                  <Input value={orderForm.customerPhone} onChange={e => setOrderForm(f => ({ ...f, customerPhone: formatPhoneNumber(e.target.value) }))} placeholder="(86) 99999-9999" className="rounded-xl h-11 border-gray-100 bg-gray-50 focus:bg-white" />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label className="text-xs font-bold text-gray-600 ml-1">Método de Entrega</Label>
+                <Label className="text-[10px] uppercase font-black text-gray-400 ml-1">Como quer receber?</Label>
                 <RadioGroup defaultValue="DELIVERY" onValueChange={v => setOrderForm(f => ({ ...f, orderType: v }))} className="flex gap-2">
                   {[
                     { id: 'del', val: 'DELIVERY', label: 'Entrega', icon: Home },
@@ -213,8 +229,8 @@ export default function CartSheet({ storeId }: CartSheetProps) {
                     <div key={type.id} className="flex-1">
                       <RadioGroupItem value={type.val} id={type.id} className="peer sr-only" />
                       <Label htmlFor={type.id} className="flex flex-col items-center justify-center rounded-xl border-2 border-gray-100 bg-white p-3 hover:bg-gray-50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all">
-                        <type.icon className={`h-5 w-5 mb-1 ${orderForm.orderType === type.val ? 'text-primary' : 'text-gray-400'}`} />
-                        <span className="text-[10px] font-bold uppercase">{type.label}</span>
+                        <type.icon className={`h-4 w-4 mb-1 ${orderForm.orderType === type.val ? 'text-primary' : 'text-gray-400'}`} />
+                        <span className="text-[9px] font-black uppercase">{type.label}</span>
                       </Label>
                     </div>
                   ))}
@@ -226,30 +242,26 @@ export default function CartSheet({ storeId }: CartSheetProps) {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold text-primary">CEP</Label>
-                      <Input value={orderForm.zipCode} onBlur={handleZipCodeBlur} onChange={e => setOrderForm(f => ({ ...f, zipCode: e.target.value }))} placeholder="00000-000" className="h-10 text-sm rounded-xl" />
+                      <Input value={orderForm.zipCode} onBlur={handleZipCodeBlur} onChange={e => setOrderForm(f => ({ ...f, zipCode: e.target.value }))} placeholder="00000-000" className="h-10 text-xs rounded-xl border-primary/20" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase font-bold text-primary">Número</Label>
-                      <Input value={orderForm.number} onChange={e => setOrderForm(f => ({ ...f, number: e.target.value }))} placeholder="Ex: 123" className="h-10 text-sm rounded-xl" />
+                      <Input value={orderForm.number} onChange={e => setOrderForm(f => ({ ...f, number: e.target.value }))} placeholder="Ex: 123" className="h-10 text-xs rounded-xl border-primary/20" />
                     </div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-primary">Rua</Label>
-                    <Input value={orderForm.street} readOnly className="h-10 text-sm bg-gray-100/50 rounded-xl cursor-not-allowed" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-primary">Ponto de Referência</Label>
-                    <Input value={orderForm.reference} onChange={e => setOrderForm(f => ({ ...f, reference: e.target.value }))} placeholder="Próximo ao..." className="h-10 text-sm rounded-xl" />
+                    <Input value={orderForm.street} readOnly className="h-10 text-xs bg-white/50 rounded-xl" />
                   </div>
                 </div>
               )}
 
               <Button
-                className="w-full rounded-2xl h-14 text-lg font-black shadow-xl"
+                className="w-full rounded-2xl h-14 text-md font-black uppercase italic tracking-widest shadow-xl"
                 onClick={handleCheckout}
                 disabled={submitting || !orderForm.customerName || orderForm.customerPhone.length < 10 || (orderForm.orderType === 'DELIVERY' && !orderForm.number)}
               >
-                {submitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><Send className="mr-2 h-5 w-5" /> FINALIZAR PEDIDO</>}
+                {submitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><Send className="mr-2 h-5 w-5" /> Enviar Pedido</>}
               </Button>
             </div>
           )}

@@ -4,10 +4,9 @@ import type { Product, CartItem } from '@/lib/api';
 
 interface CartContextType {
   items: CartItem[];
-  // Agora aceita selectedOptions para diferenciar itens iguais com adicionais diferentes
   addItem: (product: Product, storeId: string, selectedOptions?: { name: string; price: number }[]) => void;
-  removeItem: (cartItemId: string) => void; // Removido por ID único do item no carrinho
-  updateQuantity: (cartItemId: string, quantity: number) => void;
+  removeItem: (productId: string, options?: { name: string; price: number }[]) => void;
+  updateQuantity: (productId: string, quantity: number, options?: { name: string; price: number }[]) => void;
   clearCart: () => void;
   setDeliveryFee: (fee: number) => void;
   deliveryFee: number;
@@ -30,7 +29,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     selectedOptions: { name: string; price: number }[] = []
   ) => {
     setItems(prev => {
-      // 1. Limpa o carrinho se trocar de loja
+      // 1. Limpa o carrinho se trocar de loja (Multitenancy)
       if (currentStoreId && storeId !== currentStoreId) {
         setCurrentStoreId(storeId);
         return [{ product, quantity: 1, selectedOptions }];
@@ -38,7 +37,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       
       if (!currentStoreId) setCurrentStoreId(storeId);
 
-      // 2. Lógica de Identidade: Para Pizzas/Açaí, o item só é "igual" se tiver as mesmas opções
+      // 2. Lógica de Identidade: O item só é "igual" se ID + ADICIONAIS forem idênticos
       const optionsString = JSON.stringify(selectedOptions.sort((a, b) => a.name.localeCompare(b.name)));
       
       const existingIndex = prev.findIndex(i => {
@@ -55,13 +54,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return newItems;
       }
 
-      // 3. Adiciona como novo item se a combinação de adicionais for inédita
+      // 3. Adiciona como novo item se a combinação for inédita
       return [...prev, { product, quantity: 1, selectedOptions }];
     });
   }, [currentStoreId]);
 
-  const updateQuantity = useCallback((productId: string, quantity: number, options?: any[]) => {
-    // Identificamos o item pela combinação de ID + Opções
+  const updateQuantity = useCallback((productId: string, quantity: number, options?: { name: string; price: number }[]) => {
     const optionsString = options ? JSON.stringify(options.sort((a, b) => a.name.localeCompare(b.name))) : "[]";
 
     setItems(prev => {
@@ -78,7 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const removeItem = useCallback((productId: string, options?: any[]) => {
+  const removeItem = useCallback((productId: string, options?: { name: string; price: number }[]) => {
     const optionsString = options ? JSON.stringify(options.sort((a, b) => a.name.localeCompare(b.name))) : "[]";
     
     setItems(prev => {
@@ -97,9 +95,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCurrentStoreId(null);
   }, []);
 
-  // CÁLCULO DE SUBTOTAL: Agora soma o preço do produto + todos os adicionais
+  // CÁLCULO DE SUBTOTAL: Soma o preço do produto + adicionais
   const subtotal = items.reduce((sum, item) => {
     const optionsTotal = (item.selectedOptions || []).reduce((s, opt) => s + opt.price, 0);
+    // Se for pizza, o ProductCard já enviou o preço ajustado ou aqui somamos os extras
     return sum + (item.product.price + optionsTotal) * item.quantity;
   }, 0);
 

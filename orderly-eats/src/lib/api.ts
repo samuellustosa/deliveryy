@@ -236,10 +236,13 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  promoPrice?: number | null;    // Novo: Preço promocional
+  stock?: number | null;         // Novo: Controle de estoque
+  availableDays?: string | null; // Novo: Dias da semana (ex: "seg,qua,sex")
   categoryId?: string;
   imageUrl?: string | null;
   isActive: boolean;
-  optionGroups?: OptionGroup[]; // Para listar no Menu Público
+  optionGroups?: OptionGroup[]; 
 }
 
 export interface Category {
@@ -284,18 +287,21 @@ export interface Order {
   };
 }
 
+export interface Store {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  phone: string;
+  niche: string;
+  deliveryFee: number;
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+  bannerUrl?: string | null; 
+}
+
 export interface MenuData {
-  store: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    phone: string;
-    niche: string;
-    deliveryFee: number;
-    logoUrl?: string | null;
-    coverUrl?: string | null;
-  };
+  store: Store;
   products: Product[];
   categories: Category[];
   banners: Banner[];
